@@ -1,5 +1,4 @@
 mod body;
-mod collection;
-
 pub use body::Body;
-pub use collection::Collection;
+mod collection;
+pub use collection::{CAddInput, Collection};

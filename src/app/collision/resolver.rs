@@ -1,9 +1,8 @@
 /*
-    render.rs
+    resolver.rs
     ----------------------------------------
     Description:
-    * Handles the render step of the simulation
-    * Defines how each object should be drawn based on internal parameters/overall configuration
+    * Provides method to resolve collisions detected by SAT
  */
 /* --------------------- IMPORTS -------------------- */
 // Modules
@@ -15,7 +14,6 @@
 
 
 /* ------------------- STRUCTURES ------------------- */
-pub struct Render { }
 
 
 /* -------------------- FUNCTIONS ------------------- */

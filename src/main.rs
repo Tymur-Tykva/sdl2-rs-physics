@@ -7,11 +7,13 @@
  */
 /* --------------------- IMPORTS -------------------- */
 // Modules
-mod app;
-mod common;
+pub mod app;
+pub mod common;
 // Crates
-use app::App;
-use common::*;
+use crate::app::{App, objects::Body};
+use crate::app::objects::CAddInput::*;
+use crate::common::{Vector2, BodyForm};
+
 
 /* -------------------- VARIABLES ------------------- */
 
@@ -21,8 +23,17 @@ use common::*;
 
 /* -------------------- FUNCTIONS ------------------- */
 fn main() {
-    let my_app = App::new();
-    let world = my_app.engine.world;
+    let mut my_app = App::new("DEFAULT", 1000, 600);
 
-    println!("Hello, world! {}", my_app.name);
+    let bodies = Bodies(vec![
+        rect!(v2!(100, 105), 100, 100),
+        rect!(v2!(250, 293), 100, 100),
+        rect!(v2!(400, 290), 100, 100),
+        rect!(v2!(550, 315), 100, 100),
+        rect!(v2!(700, 164), 100, 100),
+        rect!(v2!(850, 339), 100, 100),
+    ]);
+    my_app.world.add(bodies);
+
+    my_app.start();
 }
