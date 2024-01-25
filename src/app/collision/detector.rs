@@ -8,43 +8,74 @@
  */
 /* --------------------- IMPORTS -------------------- */
 // Crates
+use crate::common::{ConvertPrimitives, Crd, Vector2, GRID_SIZE, MutShared};
 use crate::app::objects::Body;
-use crate::common::{AABB, Vector2};
-use std::cell::RefCell;
 use std::rc::Rc;
-use crate::v2;
-
 
 /* -------------------- VARIABLES ------------------- */
 const THRESHOLD: usize = 2;
-const GRID_SIZE: (usize, usize) = (20, 20);
-type BodyContainer = Option<Vec<Rc<RefCell<Body>>>>; // Contains references to bodies within a given cell
+// const GRID_SIZE: Vector2<usize> = v2!(5, 5);
 
 /* ------------------- STRUCTURES ------------------- */
 
 
 pub struct CollisionDetector {
-    cells: Vec<BodyContainer>,
+    shared: MutShared,
+    cells: Vec<Vec<Option<Rc<Body>>>>,    // 2D vector of AABBs
+    out_of_bounds: Vec<Option<Rc<Body>>>, // 1D vector of AABBs which are out of bounds,
+                                              // but still should be accounted for in collision
 }
 
 
 /* -------------------- FUNCTIONS ------------------- */
 impl CollisionDetector {
-    pub fn new() -> Self {
+    pub fn new(shared: MutShared) -> Self {
         CollisionDetector {
-            cells: vec![None; GRID_SIZE.0 * GRID_SIZE.1],
+            shared,
+            cells: vec![vec![None; GRID_SIZE.y]; GRID_SIZE.x],
+            out_of_bounds: Vec::new(),
         }
     }
 
-    pub fn evaluate(&self, bodies: &Vec<Body>, window_size: (u32, u32)) {
-        // let result = self.broad_phase(bodies, window_size);
-        // // dbg!(result);
-        //
-        // self.narrow_phase();
+    pub fn evaluate(&mut self, bodies: &Vec<Body>) {
+        self.cells = vec![vec![None; GRID_SIZE.y]; GRID_SIZE.x];
+        self.out_of_bounds = Vec::new();
+
+        self.broad_phase(bodies);
     }
 
-    fn broad_phase(&self, bodies: &Vec<Body>, window_size: (u32, u32)) -> Vec<Body> {
-        todo!()
+    fn broad_phase(&mut self, bodies: &Vec<Body>) -> Vec<Body> {
+        let window_size = self.shared.borrow_mut().window_size;
+        let bounds: Vector2<Crd> = (window_size / GRID_SIZE.to()).to();
+
+        for body in bodies {
+            // Evaluate whether body out of bounds
+            let mut grid = vec![];
+            let aabb = body.aabb();
+
+            for point in aabb.clone().points {
+                let point: Vector2<Crd> = (point / bounds).to();
+                grid.push(point);
+            }
+
+            let max_x = grid.iter().map(|v2| v2.x).max().unwrap_or(-1);
+            let max_y = grid.iter().map(|v2| v2.y).max().unwrap_or(-1);
+            let min_x = grid.iter().map(|v2| v2.x).min().unwrap_or(-1);
+            let min_y = grid.iter().map(|v2| v2.y).min().unwrap_or(-1);
+
+            for i in min_x..=max_x {
+                for j in min_y..=max_y {
+                    let i = i as usize;
+                    let j = j as usize;
+
+                    self.cells[j][i] = Some(Rc::from(body));
+                }
+            }
+
+            println!("{}, {} | {}, {}", max_x, max_y, min_x, min_y)
+        }
+
+        vec![]
     }
 
     fn narrow_phase(&self) {}

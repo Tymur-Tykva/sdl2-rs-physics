@@ -13,32 +13,32 @@ use crate::app::objects::Body;
 
 /* ------------------- STRUCTURES ------------------- */
 #[derive(Debug, PartialEq)]
-pub struct Collection {
-    name: String,
+pub struct Collection<'a> {
+    name: &'a str,
 
     bodies: Vec<Body>,
     collections: Vec<Self>
 }
 
-pub enum CAddInput {
+pub enum CAddInput<'a> {
     Body(Body),
     Bodies(Vec<Body>),
-    Collection(Collection),
-    Collections(Vec<Collection>),
+    Collection(Collection<'a>),
+    Collections(Vec<Collection<'a>>),
 }
 
 
 /* -------------------- FUNCTIONS ------------------- */
-impl Collection {
-    pub fn new(name: &str) -> Self {
+impl<'a> Collection<'a> {
+    pub fn new(name: &'a str) -> Self {
         Collection {
-            name: String::from(name),
+            name,
             bodies: Vec::new(),
             collections: Vec::new(),
         }
     }
 
-    pub fn add(&mut self, object: CAddInput) {
+    pub fn add(&mut self, object: CAddInput<'a>) {
         match object {
             CAddInput::Body(body) => {
                 if self.bodies.contains(&body) { return; }
@@ -71,7 +71,7 @@ impl Collection {
     pub fn collections(&self) -> &Vec<Collection> {
         &self.collections
     }
-    pub fn mut_collections(&mut self) -> &mut Vec<Collection> {
+    pub fn mut_collections(& mut self) -> &mut Vec<Collection<'a>> {
         &mut self.collections
     }
 }

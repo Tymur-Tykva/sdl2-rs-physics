@@ -14,8 +14,6 @@ pub mod video;
 pub mod objects;
 pub mod collision;
 
-use std::cell::RefCell;
-use std::rc::Rc;
 // Crates
 use std::thread;
 use std::time::Duration;
@@ -26,15 +24,17 @@ use sdl2::Sdl;
 use sdl2::video::Window;
 use crate::app::engine::Engine;
 use crate::app::video::Video;
-use crate::common::Vector2;
+use crate::common::{MutShared, Vector2};
 use crate::v2;
 
 /* -------------------- VARIABLES ------------------- */
-
+const DEBUG: bool = true;
 
 /* ------------------- STRUCTURES ------------------- */
-pub struct App {
-    name: String,
+pub struct App<'a> {
+    shared: MutShared,
+
+    name: &'a str,
     size: Vector2<u32>,
 
     fps: u64,
@@ -42,25 +42,25 @@ pub struct App {
 
     sdl2_ctx: Sdl,
     video: Video,
-    engine: Engine,
-    pub world: Collection,
+    engine: Engine<'a>,
+    pub world: Collection<'a>,
 }
 
 /* -------------------- FUNCTIONS ------------------- */
-impl App {
-    pub fn new(name: &str, width: u32, height: u32) -> Self {
+impl<'a> App<'a> {
+    pub fn new(name: &'a str, width: u32, height: u32) -> Self {
         let sdl2_ctx = sdl2::init().unwrap();
 
         let video = Video::new(&sdl2_ctx, name, width, height);
-        let engine = Engine::new();
+        let engine = Engine::new(video.shared.clone());
 
         let fps = 1000/60;
         let delta = fps;
 
-        println!("{}", fps);
-
         App {
-            name: String::from(name),
+            shared: video.shared.clone(),
+
+            name,
             size: v2!(width, height),
 
             fps,
@@ -81,6 +81,8 @@ impl App {
         // self.video.canvas.present();
 
         let mut event_pump = self.sdl2_ctx.event_pump().unwrap();
+        let mut stepped: bool = false;
+
         'main_loop: loop {
             for event in event_pump.poll_iter() {
                 match event {
@@ -90,18 +92,22 @@ impl App {
                 }
             }
 
-            self.video.canvas.clear();
+            if !(DEBUG && stepped) {
+                stepped = true;
 
-            // Draw objects in world collection
-            for body in self.world.bodies() {
-                // dbg!(body);
-                self.video.draw_body(body);
+                self.video.canvas.clear();
+
+                // Draw objects in world collection
+                for body in self.world.bodies() {
+                    self.video.draw_body(body);
+                }
+
+                // Update physics
+                self.engine.step(&mut self.world, self.delta);
+
+                self.video.canvas.present();
             }
 
-            // Update physics
-            self.engine.step(self.video.window(), &mut self.world, self.delta);
-
-            self.video.canvas.present();
             thread::sleep(Duration::from_millis(self.fps));
         }
     }

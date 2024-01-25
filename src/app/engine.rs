@@ -9,8 +9,7 @@
 // Crates
 use crate::app::collision::CollisionDetector;
 use crate::app::objects::{Body, Collection};
-use crate::common::{Vector2, Vector2M};
-use sdl2::video::Window;
+use crate::common::{MutShared, Vector2, Vector2M};
 use crate::v2;
 
 
@@ -19,24 +18,24 @@ use crate::v2;
 
 /* ------------------- STRUCTURES ------------------- */
 
-pub struct Engine {
+pub struct Engine<'a> {
+    shared: MutShared,
     gravity: Vector2M<f64>,
-    collision: CollisionDetector,
+    collision: CollisionDetector<'a>,
 }
 
 
 /* -------------------- FUNCTIONS ------------------- */
-impl Engine {
-    pub fn new() -> Self {
-        // let window = Rc::from(RefCell::from(window));
-
+impl Engine<'_> {
+    pub fn new(shared: MutShared) -> Self {
         Engine {
+            shared: shared.clone(),
             gravity: v2!(0f64, 1f64, 0.001),
-            collision: CollisionDetector::new(),
+            collision: CollisionDetector::new(shared.clone()),
         }
     }
 
-    pub fn step(&self, window: &Window, world: &mut Collection, delta: u64) {
+    pub fn step(&mut self, world: &mut Collection, delta: u64) {
         let bodies = world.bodies();
 
         // Resolve gravity
@@ -52,7 +51,7 @@ impl Engine {
         // TODO: Resolve constraints
 
         // TODO: Resolve collisions
-        self.collision.evaluate(world.bodies(), window.size());
+        self.collision.evaluate(world.bodies());
     }
 
     fn resolve_gravity(&self, body: &mut Body) {

@@ -8,8 +8,9 @@
 /* --------------------- IMPORTS -------------------- */
 // Crates
 use crate::common::{BodyForm, Vector2, Vertex, Crd, ConvertPrimitives, AABB};
-use crate::{v2, vtx};
 use std::f64::consts::PI;
+use std::rc::Rc;
+use crate::{v2, vtx};
 
 /* -------------------- VARIABLES ------------------- */
 
@@ -213,17 +214,21 @@ impl Body {
 
     /// Returns the axis-aligned bounding box of the object.
     pub fn aabb(&self) -> AABB {
-        let extent;
-
         if self.radius.is_some() {
-            extent = Vector2::from(self.radius.unwrap() / 2);
-        } else {
-            extent = v2!(self.width.unwrap() / 2, self.height.unwrap() / 2);
-        }
+            let r = self.radius.unwrap() as Crd;
 
-        AABB {
-            center: self.globalise(self.position),
-            extent,
+            AABB {
+                points: vec![v2!(-r, -r), v2!(r, -r), v2!(r, r), v2!(-r, r)]
+                    .iter().map(|&v2| self.globalise(v2)).collect(),
+            }
+        } else {
+            let w = self.width.unwrap() as Crd;
+            let h = self.height.unwrap() as Crd;
+
+            AABB {
+                points: vec![v2!(0, 0), v2!(0, h), v2!(w, h), v2!(w, 0)]
+                    .iter().map(|&v2| self.globalise(v2)).collect(),
+            }
         }
     }
 

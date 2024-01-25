@@ -8,18 +8,17 @@
 // Crates
 use std::ops::{Add, Div, Mul, Sub};
 use num::cast::AsPrimitive;
-use sdl2::video::Window;
+use std::cell::RefCell;
 use std::rc::Rc;
 
 /* -------------------- VARIABLES ------------------- */
 pub type Crd = i32;
+pub type MutShared = Rc<RefCell<Shared>>;
+pub const GRID_SIZE: Vector2<usize> = crate::v2!(15, 15);
 
 /* ------------------- STRUCTURES ------------------- */
-// So help me god
-// I tried to avoid this, but I can never seem to find a way out
-#[derive(Debug)]
 pub struct Shared {
-    window: Rc<Window>,
+    pub window_size: Vector2<u32>,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -146,10 +145,9 @@ pub enum BodyForm {
     Circle
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct AABB {
-    pub center: Vector2<Crd>,
-    pub extent: Vector2<u32>,
+    pub points: Vec<Vector2<Crd>>,
 }
 
 /* --------------------- MACROS --------------------- */
@@ -175,16 +173,5 @@ macro_rules! vtx {
         Vertex { id:$id, x:$x, y:$y }
     };
 }
-
-#[macro_export]
-macro_rules! v2into {
-    ($v2:expr, $t:ident) => {
-        Vector2 {
-            x: $v2.x as $t,
-            y: $v2.y as $t,
-        }
-    };
-}
-
 /* ------------------- FUNCTIONS ------------------- */
 
