@@ -8,26 +8,23 @@
 /* --------------------- IMPORTS -------------------- */
 // Crates
 use crate::app::collision::CollisionDetector;
-use crate::app::objects::{Body, Collection};
-use crate::common::{MutShared, Vector2, Vector2M};
+use crate::common::{TBodyRef, TSharedRef, Vector2, Vector2M};
 use crate::v2;
-
 
 /* -------------------- VARIABLES ------------------- */
 
 
 /* ------------------- STRUCTURES ------------------- */
 
-pub struct Engine<'a> {
-    shared: MutShared,
+pub struct Engine {
+    shared: TSharedRef,
     gravity: Vector2M<f64>,
-    collision: CollisionDetector<'a>,
+    collision: CollisionDetector,
 }
 
-
 /* -------------------- FUNCTIONS ------------------- */
-impl Engine<'_> {
-    pub fn new(shared: MutShared) -> Self {
+impl Engine {
+    pub fn new(shared: TSharedRef) -> Self {
         Engine {
             shared: shared.clone(),
             gravity: v2!(0f64, 1f64, 0.001),
@@ -35,26 +32,27 @@ impl Engine<'_> {
         }
     }
 
-    pub fn step(&mut self, world: &mut Collection, delta: u64) {
-        let bodies = world.bodies();
-
+    pub fn step(&mut self, bodies: &Vec<TBodyRef>, delta: u64) {
         // Resolve gravity
-        for body in world.mut_bodies() {
-            // self.resolve_gravity(body);
+        for body_ref in bodies {
+            // self.resolve_gravity(body_ref);
         }
 
         // Update body position/rotation
-        for body in world.mut_bodies() {
+        for body_ref in bodies {
+            let mut body = body_ref.borrow_mut();
             body.update(delta);
         }
 
         // TODO: Resolve constraints
 
         // TODO: Resolve collisions
-        self.collision.evaluate(world.bodies());
+        self.collision.evaluate(bodies);
     }
 
-    fn resolve_gravity(&self, body: &mut Body) {
+    fn resolve_gravity(&self, body: &TBodyRef) {
+        let mut body = body.borrow_mut();
+
         if body.frozen() {
             return;
         }

@@ -7,24 +7,24 @@
  */
 /* --------------------- IMPORTS -------------------- */
 // Crates
-use crate::common::{Crd, Vector2, GRID_SIZE, MutShared, Shared, ConvertPrimitives};
-use sdl2::{Sdl, VideoSubsystem};
-use sdl2::render::WindowCanvas;
-use sdl2::rect::{Point, Rect};
-use crate::app::objects::Body;
-use sdl2::pixels::Color;
-use sdl2::video::Window;
 use std::cell::RefCell;
 use std::rc::Rc;
+
+use sdl2::{Sdl, VideoSubsystem};
+use sdl2::pixels::Color;
+use sdl2::rect::{Point, Rect};
+use sdl2::render::WindowCanvas;
+use sdl2::video::Window;
+
+use crate::common::{ConvertPrimitives, Crd, GRID_SIZE, Shared, TBodyRef, TSharedRef, Vector2};
 use crate::v2;
 
 /* -------------------- VARIABLES ------------------- */
 const POINT_SIZE: u32 = 4;
 
-
 /* ------------------- STRUCTURES ------------------- */
 pub struct Video {
-    pub shared: MutShared,
+    pub shared: TSharedRef,
 
     pub subsys: VideoSubsystem,
     pub canvas: WindowCanvas,
@@ -53,6 +53,7 @@ impl<'a> Video {
         let window_size = canvas.window().size();
         let shared = Rc::from(RefCell::from(Shared {
             window_size: v2!(window_size.0, window_size.1),
+            collision_grid: Vec::new(),
         }));
 
         Video {
@@ -63,9 +64,9 @@ impl<'a> Video {
             // window,
 
             aabb: true,
+            grid: true,
             points: true,
             wireframe: false,
-            grid: true,
         }
     }
 
@@ -85,25 +86,19 @@ impl<'a> Video {
         self.canvas.set_draw_color(cached_color);
     }
 
-    pub fn draw_body(&mut self, body: &Body) {
+    pub fn draw_body(&mut self, body_ref: &TBodyRef) {
+        let body = body_ref.borrow_mut();
         let vertices = body.vertices();
 
-        // Draw collision grid
-        if self.grid {
-            let window_size: Vector2<Crd> = self.shared.borrow_mut().window_size.to();
-            let scalar: Vector2<Crd> = (window_size / GRID_SIZE.clone().to()).to();
+        // Draw AABB
+        if self.aabb {
+            let points = body.aabb().points;
 
-            for i in 0..=GRID_SIZE.x {
-                let i = i as Crd;
-                self.line(v2!(i * scalar.x, 0), v2!(i * scalar.x, window_size.y), Color::GRAY);
-            }
-
-            for j in 0..=GRID_SIZE.y {
-                let j = j as Crd;
-                self.line(v2!(0, j * scalar.y), v2!(window_size.x, j * scalar.y), Color::GRAY);
+            self.line(points[0], points[3], Color::GREEN);
+            for i in 0..(points.len() - 1) {
+                self.line(points[i], points[i + 1], Color::GREEN);
             }
         }
-
 
         // Draw internal lines
         // Dependent on: self.wireframe == true
@@ -134,16 +129,6 @@ impl<'a> Video {
             );
         }
 
-        // // Draw AABB
-        // if self.aabb {
-        //     let points = body.aabb().points;
-        //
-        //     self.line(points[0], points[3], Color::GREEN);
-        //     for i in 0..(points.len() - 1) {
-        //         self.line(points[i], points[i + 1], Color::GREEN);
-        //     }
-        // }
-
         // Draw points
         // Dependent on: self.points == true
         if self.points {
@@ -152,6 +137,61 @@ impl<'a> Video {
             }
             // Origin
             self.point(body.globalise(v2!(0, 0)), Color::BLUE);
+        }
+    }
+
+    pub fn pre_draw(&mut self) {
+        self.canvas.clear();
+        // TODO: Add bg color
+
+        let window_size: Vector2<Crd> = self.shared.borrow_mut().window_size.to();
+        let scalar: Vector2<Crd> = (window_size / GRID_SIZE.clone().to()).to();
+
+        // Draw collision grid
+        if self.grid {
+            // Draw grid
+            for i in 0..=GRID_SIZE.x {
+                let i = i as Crd;
+                self.line(v2!(i * scalar.x, 0), v2!(i * scalar.x, window_size.y), Color::GRAY);
+            }
+
+            for j in 0..=GRID_SIZE.y {
+                let j = j as Crd;
+                self.line(v2!(0, j * scalar.y), v2!(window_size.x, j * scalar.y), Color::GRAY);
+            }
+
+            // Draw object grid assignment
+            let collision_grid = &self.shared.borrow_mut().collision_grid;
+            let scale_max = collision_grid.iter() // This gets the max length of a 3D vector
+                .map(|v2| v2.iter()
+                    .map(|v| v.len())
+                    .max().unwrap_or(1)
+                ).max().unwrap_or(1);
+
+            if !(collision_grid.is_empty()) {
+                for i in 0..GRID_SIZE.x {
+                    for j in 0..GRID_SIZE.y {
+                        let cell = &collision_grid[i][j];
+
+                        if cell.len() > 0 {
+                            let i = i as Crd;
+                            let j = j as Crd;
+
+                            let rect = Rect::new(j*scalar.x, i*scalar.y, scalar.to().x, scalar.to().y);
+                            let cached_color = self.canvas.draw_color();
+
+                            let scaled = cell.len() as f64 / scale_max as f64;
+                            let r = 0;
+                            let g = (150f64 * scaled) as u8;
+                            let b = (50f64 * scaled) as u8;
+
+                            self.canvas.set_draw_color(Color::RGB(r, g, b));
+                            self.canvas.fill_rect(rect).unwrap();
+                            self.canvas.set_draw_color(cached_color);
+                        }
+                    }
+                }
+            }
         }
     }
 

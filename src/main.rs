@@ -11,9 +11,7 @@ pub mod app;
 pub mod common;
 // Crates
 use crate::app::{App, objects::Body};
-use crate::app::objects::CAddInput::*;
-use crate::common::{Vector2, BodyForm};
-
+use crate::common::{BodyForm, Vector2};
 
 /* -------------------- VARIABLES ------------------- */
 
@@ -25,15 +23,16 @@ use crate::common::{Vector2, BodyForm};
 fn main() {
     let mut my_app = App::new("DEFAULT", 1000, 600);
 
-    let bodies = Bodies(vec![
-        poly!(v2!(835, 333), 70, 5),
+    let bodies = vec![
+        poly!(v2!(835, 0), 70, 6),
+        poly!(v2!(750, 30), 70, 5),
+        poly!(v2!(750, 50), 40, 7),
+        // rect!(v2!(700, 164), 100, 100),
         // rect!(v2!(100, 105), 100, 100),
         // rect!(v2!(250, 293), 100, 100),
         // rect!(v2!(400, 290), 100, 100),
-        // poly!(v2!(550, 315), 40, 7),
-        // rect!(v2!(700, 164), 100, 100),
-    ]);
-    my_app.world.add(bodies);
+    ];
+    my_app.add_bodies(bodies);
 
     my_app.start();
 }

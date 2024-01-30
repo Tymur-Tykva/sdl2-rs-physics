@@ -7,10 +7,10 @@
  */
 /* --------------------- IMPORTS -------------------- */
 // Crates
-use crate::common::{BodyForm, Vector2, Vertex, Crd, ConvertPrimitives, AABB};
 use std::f64::consts::PI;
-use std::rc::Rc;
+
 use crate::{v2, vtx};
+use crate::common::{AABB, BodyForm, ConvertPrimitives, Crd, Vector2, Vertex};
 
 /* -------------------- VARIABLES ------------------- */
 
@@ -149,6 +149,8 @@ impl Body {
 
     /// Physics update for the body. Called every frame.
     pub fn update(&mut self, delta: u64) {
+        if self.frozen { return; }
+
         let delta2 = (delta * delta) as f64;
         let position_buffer = self.position.clone();
 
@@ -214,21 +216,23 @@ impl Body {
 
     /// Returns the axis-aligned bounding box of the object.
     pub fn aabb(&self) -> AABB {
+        let mut points;
+
         if self.radius.is_some() {
             let r = self.radius.unwrap() as Crd;
 
-            AABB {
-                points: vec![v2!(-r, -r), v2!(r, -r), v2!(r, r), v2!(-r, r)]
-                    .iter().map(|&v2| self.globalise(v2)).collect(),
-            }
+            points = vec![v2!(-r, -r), v2!(r, -r), v2!(r, r), v2!(-r, r)]
+                .iter().map(|&v2| self.globalise(v2)).collect();
         } else {
             let w = self.width.unwrap() as Crd;
             let h = self.height.unwrap() as Crd;
 
-            AABB {
-                points: vec![v2!(0, 0), v2!(0, h), v2!(w, h), v2!(w, 0)]
-                    .iter().map(|&v2| self.globalise(v2)).collect(),
-            }
+            points = vec![v2!(0, 0), v2!(0, h), v2!(w, h), v2!(w, 0)]
+                .iter().map(|&v2| self.globalise(v2)).collect();
+        }
+
+        AABB {
+            points
         }
     }
 
@@ -242,6 +246,9 @@ impl Body {
     pub fn origin(&self) -> Vector2<Crd> {
         self.origin
     }
+    pub fn sides(&self) ->u32 {
+        self.sides
+    }
     pub fn frozen(&self) -> bool {
         self.frozen
     }
@@ -249,6 +256,7 @@ impl Body {
         self.force_buffer
     }
     /* --------------------- SETTERS -------------------- */
+    pub fn set_frozen(&mut self, frozen: bool) { self.frozen = frozen }
     pub fn set_position(&mut self, position: Vector2<Crd>) {
         self.position = position;
     }

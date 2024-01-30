@@ -6,19 +6,29 @@
  */
 /* --------------------- IMPORTS -------------------- */
 // Crates
-use std::ops::{Add, Div, Mul, Sub};
-use num::cast::AsPrimitive;
 use std::cell::RefCell;
+use std::ops::{Add, Div, Mul, Sub};
 use std::rc::Rc;
 
+use num::cast::AsPrimitive;
+
+use crate::app::objects::Body;
+
 /* -------------------- VARIABLES ------------------- */
+// General
 pub type Crd = i32;
-pub type MutShared = Rc<RefCell<Shared>>;
-pub const GRID_SIZE: Vector2<usize> = crate::v2!(15, 15);
+pub type TSharedRef = Rc<RefCell<Shared>>;
+
+// Collision
+pub const GRID_SIZE: Vector2<usize> = crate::v2!(20, 20);
+pub type TBodyRef = Rc<RefCell<Body>>;
+pub type TCollisionGrid = Vec<Vec<Vec<TBodyRef>>>;
+pub type TCollisionCandidatePairs = Vec<[TBodyRef; 2]>;
 
 /* ------------------- STRUCTURES ------------------- */
 pub struct Shared {
     pub window_size: Vector2<u32>,
+    pub collision_grid: TCollisionGrid,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -26,7 +36,6 @@ pub struct Vector2<T> {
     pub x: T,
     pub y: T,
 }
-
 impl<T: Copy> Vector2<T> {
     pub fn from(value: T) -> Vector2<T> {
         Vector2 {
@@ -119,7 +128,6 @@ pub struct Vector2M<T> {
     pub y: T,
     pub m: f64,
 }
-
 impl<T> Vector2M<T> {
     pub fn to_vec2(self) -> Vector2<T> {
         Vector2 { x: self.x, y: self.y }
@@ -132,7 +140,6 @@ pub struct Vertex {
     pub x: Crd,
     pub y: Crd,
 }
-
 impl Vertex {
     pub fn to_vec2(self) -> Vector2<Crd> {
         Vector2 { x: self.x, y: self.y }
@@ -173,5 +180,6 @@ macro_rules! vtx {
         Vertex { id:$id, x:$x, y:$y }
     };
 }
+
 /* ------------------- FUNCTIONS ------------------- */
 
