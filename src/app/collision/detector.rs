@@ -8,7 +8,7 @@
  */
 /* --------------------- IMPORTS -------------------- */
 // Crates
-use crate::common::{ConvertPrimitives, Crd, GRID_SIZE, TBodyRef, TCollisionCandidatePairs, TCollisionGrid, TSharedRef, Vector2};
+use crate::common::{ConvertPrimitives, Crd, GRID_SIZE, TBodyRef, TCollisionPairs, TCollisionGrid, TSharedRef, Vector2};
 
 /* -------------------- VARIABLES ------------------- */
 const THRESHOLD: usize = 2;
@@ -38,12 +38,14 @@ impl CollisionDetector {
     }
 
     /// Returns object pairs for more precise analysis in the narrow phase
-    fn broad_phase(&mut self, bodies: &Vec<TBodyRef>) -> TCollisionCandidatePairs {
+    fn broad_phase(&mut self, bodies: &Vec<TBodyRef>) -> TCollisionPairs {
+        // TODO: Destroy objects too far out of bounds
+
         let window_size = self.shared.borrow_mut().window_size;
         let bounds: Vector2<Crd> = (window_size / GRID_SIZE.to()).to();
         // Broad-phase results
         let mut marked: Vec<(usize, usize)> = Vec::new();
-        let mut candidates: TCollisionCandidatePairs = Vec::new();
+        let mut pairs: TCollisionPairs = Vec::new();
 
 
         for body_ref in bodies {
@@ -64,11 +66,13 @@ impl CollisionDetector {
             let min_x = points.iter().map(|v2| v2.x).min().unwrap_or(-1);
             let min_y = points.iter().map(|v2| v2.y).min().unwrap_or(-1);
 
-            // Ensure object within display bounds
+            // Fill grid
             let grid_size_crd: Vector2<Crd> = GRID_SIZE.to();
-            if min_x >= 0 && min_y >= 0 && max_x < grid_size_crd.x && max_y < grid_size_crd.y {
-                // Fill grid with object reference
-                for i in min_y..=max_y { for j in min_x..=max_x {
+            let mut oob = false;
+
+            for i in min_y..=max_y { for j in min_x..=max_x {
+                // Allow not completely OOB objects to interact with collision
+                if i >= 0 && i < grid_size_crd.y && j >= 0 && j < grid_size_crd.x {
                     let i = i as usize;
                     let j = j as usize;
                     self.collision_grid[i][j].push(body_ref.clone());
@@ -76,17 +80,19 @@ impl CollisionDetector {
                     // If cell has >= 2 objects, mark it as a collision candidate
                     if self.collision_grid[i][j].len() < 2 || marked.contains(&(i, j)) { continue; }
                     marked.push((i, j));
-                }}
-            } else {
-                self.out_of_bounds.push(body_ref.clone())
-            }
-
+                } else {
+                    if !oob {
+                        oob = true;
+                        self.out_of_bounds.push(body_ref.clone());
+                    }
+                }
+            }}
         }
 
         // Update shared collision grid information
         self.shared.borrow_mut().collision_grid = self.collision_grid.clone();
 
-        // Fetch collision pairs
+        // Fetch in-bound collision pairs
         for n in 0..marked.len() {
             let (i, j) = marked[n];
             let cell = self.collision_grid[i][j].clone();
@@ -95,16 +101,23 @@ impl CollisionDetector {
             for a in 0..cell.len() { for b in 1..cell.len() {
                 // Ensure no duplicates
                 if cell[a] == cell[b]
-                    || candidates.contains(&[cell[a].clone(), cell[b].clone()])
-                    || candidates.contains(&[cell[b].clone(), cell[a].clone()]) { continue; }
+                    || pairs.contains(&[cell[a].clone(), cell[b].clone()])
+                    || pairs.contains(&[cell[b].clone(), cell[a].clone()]) { continue; }
 
-                println!("{i} {j} | {a} {b} : {:?}", [cell[a].clone(), cell[b].clone()].clone().map(|b_ref| b_ref.borrow().sides()));
-                candidates.push([cell[a].clone(), cell[b].clone()]);
+                pairs.push([cell[a].clone(), cell[b].clone()]);
             }}
         }
 
-        println!("=========");
-        candidates
+        // Fetch out-of-bounds collision pairs
+        for a in 0..self.out_of_bounds.len() { for b in 1..self.out_of_bounds.len() {
+            if self.out_of_bounds[a] == self.out_of_bounds[b]
+                || pairs.contains(&[self.out_of_bounds[a].clone(), self.out_of_bounds[b].clone()])
+                || pairs.contains(&[self.out_of_bounds[b].clone(), self.out_of_bounds[a].clone()]) { continue; }
+
+            pairs.push([self.out_of_bounds[a].clone(), self.out_of_bounds[b].clone()]);
+        }}
+
+        pairs
     }
 
     fn narrow_phase(&self) {}

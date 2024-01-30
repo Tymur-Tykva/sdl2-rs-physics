@@ -23,7 +23,7 @@ pub type TSharedRef = Rc<RefCell<Shared>>;
 pub const GRID_SIZE: Vector2<usize> = crate::v2!(20, 20);
 pub type TBodyRef = Rc<RefCell<Body>>;
 pub type TCollisionGrid = Vec<Vec<Vec<TBodyRef>>>;
-pub type TCollisionCandidatePairs = Vec<[TBodyRef; 2]>;
+pub type TCollisionPairs = Vec<[TBodyRef; 2]>;
 
 /* ------------------- STRUCTURES ------------------- */
 pub struct Shared {

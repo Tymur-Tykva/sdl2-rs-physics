@@ -35,7 +35,7 @@ impl Engine {
     pub fn step(&mut self, bodies: &Vec<TBodyRef>, delta: u64) {
         // Resolve gravity
         for body_ref in bodies {
-            // self.resolve_gravity(body_ref);
+            self.resolve_gravity(body_ref);
         }
 
         // Update body position/rotation

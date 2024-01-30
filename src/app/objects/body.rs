@@ -31,7 +31,6 @@ use crate::common::{AABB, BodyForm, ConvertPrimitives, Crd, Vector2, Vertex};
 ///
 /// * `sides`: How many edges the polygon has. MUST to be 4 for rect-likes.
 /// * `vertices`: Internal vector for keeping track of vertex positions.
-/// * `edges`: Internal vector for keeping track of edges. TODO Consider removal
 /// * `width`: The width of a rect-like.
 /// * `height`: The height of a rect-like.
 ///
@@ -78,7 +77,7 @@ impl Body {
     ///
     /// * `form`: The body's shape; whether it is a Polygon/Circle/etc.
     /// * `position`: The initial global position of the body.
-    /// * `radius`: Defines the size of polygons/circles. Ignore for rect-likes. TODO convert to Option()
+    /// * `radius`: Defines the size of polygons/circles. Ignore for rect-likes.
     /// * `sides`: How many edges the shape has; used in `BodyForm::Polygon`.
     /// * `width`: Defines the width of a rect-like.
     /// * `height`: Defines the height of a rect-like.
