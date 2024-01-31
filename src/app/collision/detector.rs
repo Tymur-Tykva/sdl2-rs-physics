@@ -34,7 +34,10 @@ impl CollisionDetector {
         self.collision_grid = vec![vec![vec![]; GRID_SIZE.y]; GRID_SIZE.x];
         self.out_of_bounds = Vec::new();
 
-        self.broad_phase(bodies);
+        let candidate_pairs = self.broad_phase(bodies);
+        let colliding_pairs = self.narrow_phase(candidate_pairs);
+
+        // println!("{:?}", colliding_pairs);
     }
 
     /// Returns object pairs for more precise analysis in the narrow phase
@@ -117,9 +120,31 @@ impl CollisionDetector {
             pairs.push([self.out_of_bounds[a].clone(), self.out_of_bounds[b].clone()]);
         }}
 
+        // Update shared broad-phase pair information
+        self.shared.borrow_mut().broad_phase_pairs = pairs.clone();
+
         pairs
     }
 
-    fn narrow_phase(&self) {}
+    /// Confirm/deny collision using the Separating Axis Theorem (SAT)
+    fn narrow_phase(&self, pairs: TCollisionPairs) -> TCollisionPairs {
+        let colliding_pairs: TCollisionPairs = Vec::new();
+
+        for pair in pairs {
+            let body1 = pair[0].borrow();
+            let body2 = pair[1].borrow();
+
+            // Get all non-duplicate axes
+            let mut axes = body1.axes();
+            for axis in body2.axes() {
+                if axes.contains(&axis) { continue; }
+                axes.push(axis)
+            }
+
+            // println!("{:?}", axes);
+        }
+
+        colliding_pairs
+    }
 }
 

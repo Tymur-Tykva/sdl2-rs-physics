@@ -8,9 +8,11 @@
 /* --------------------- IMPORTS -------------------- */
 // Crates
 use std::cell::RefCell;
+use std::ops::Index;
 use std::rc::Rc;
 
 use sdl2::{Sdl, VideoSubsystem};
+use sdl2::mouse::SystemCursor::No;
 use sdl2::pixels::Color;
 use sdl2::rect::{Point, Rect};
 use sdl2::render::WindowCanvas;
@@ -33,6 +35,7 @@ pub struct Video {
     grid: bool,
     points: bool,
     wireframe: bool,
+    broad_phase_indicator: bool,
     // pub window: Windows
 }
 
@@ -54,6 +57,7 @@ impl<'a> Video {
         let shared = Rc::from(RefCell::from(Shared {
             window_size: v2!(window_size.0, window_size.1),
             collision_grid: Vec::new(),
+            broad_phase_pairs: Vec::new(),
         }));
 
         Video {
@@ -63,10 +67,11 @@ impl<'a> Video {
             canvas,
             // window,
 
-            aabb: true,
-            grid: true,
+            aabb: false,
+            grid: false,
             points: true,
             wireframe: false,
+            broad_phase_indicator: false,
         }
     }
 
@@ -138,6 +143,18 @@ impl<'a> Video {
             // Origin
             self.point(body.globalise(v2!(0, 0)), Color::BLUE);
         }
+
+
+        // TODO: REMOVE TEMPORARY DISPLAY
+        let p1 = body.vertices()[0].to_vec2();
+        let p2 = body.vertices()[1].to_vec2();
+        let edge = p2 - p1;
+        let normal = v2!(-edge.y, edge.x);
+
+        self.point(body.globalise(p1), Color::CYAN);
+        self.point(body.globalise(p2), Color::CYAN);
+        self.point(body.globalise(edge), Color::MAGENTA);
+        self.point(body.globalise(normal), Color::RED);
     }
 
     pub fn pre_draw(&mut self) {
@@ -149,19 +166,8 @@ impl<'a> Video {
 
         // Draw collision grid
         if self.grid {
-            // Draw grid
-            for i in 0..=GRID_SIZE.x {
-                let i = i as Crd;
-                self.line(v2!(i * scalar.x, 0), v2!(i * scalar.x, window_size.y), Color::GRAY);
-            }
-
-            for j in 0..=GRID_SIZE.y {
-                let j = j as Crd;
-                self.line(v2!(0, j * scalar.y), v2!(window_size.x, j * scalar.y), Color::GRAY);
-            }
-
-            // Draw object grid assignment
-            let collision_grid = &self.shared.borrow_mut().collision_grid;
+            // Draw body grid collision underlay
+            let collision_grid = self.shared.borrow_mut().collision_grid.clone();
             let scale_max = collision_grid.iter() // This gets the max length of a 3D vector
                 .map(|v2| v2.iter()
                     .map(|v| v.len())
@@ -191,6 +197,29 @@ impl<'a> Video {
                         }
                     }
                 }
+            }
+
+            // Draw grid
+            let color = Color::RGB(50, 50, 50);
+            for i in 0..=GRID_SIZE.x {
+                let i = i as Crd;
+                self.line(v2!(i * scalar.x, 0), v2!(i * scalar.x, window_size.y), color);
+            }
+
+            for j in 0..=GRID_SIZE.y {
+                let j = j as Crd;
+                self.line(v2!(0, j * scalar.y), v2!(window_size.x, j * scalar.y), color);
+            }
+        }
+
+        if self.broad_phase_indicator {
+            let broad_phase_pairs = self.shared.borrow().broad_phase_pairs.clone();
+
+            for pair in broad_phase_pairs {
+                let b1 = pair[0].borrow_mut();
+                let b2 = pair[1].borrow_mut();
+
+                self.line(b1.globalise(Vector2::from(0)), b2.globalise(Vector2::from(0)), Color::RGB(255, 165, 0));
             }
         }
     }

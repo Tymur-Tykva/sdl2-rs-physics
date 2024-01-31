@@ -20,7 +20,7 @@ pub type Crd = i32;
 pub type TSharedRef = Rc<RefCell<Shared>>;
 
 // Collision
-pub const GRID_SIZE: Vector2<usize> = crate::v2!(20, 20);
+pub const GRID_SIZE: Vector2<usize> = crate::v2!(15, 15);
 pub type TBodyRef = Rc<RefCell<Body>>;
 pub type TCollisionGrid = Vec<Vec<Vec<TBodyRef>>>;
 pub type TCollisionPairs = Vec<[TBodyRef; 2]>;
@@ -29,6 +29,7 @@ pub type TCollisionPairs = Vec<[TBodyRef; 2]>;
 pub struct Shared {
     pub window_size: Vector2<u32>,
     pub collision_grid: TCollisionGrid,
+    pub broad_phase_pairs: TCollisionPairs,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -42,6 +43,10 @@ impl<T: Copy> Vector2<T> {
             x: value,
             y: value,
         }
+    }
+
+    pub fn dot(v1: Vector2<T>, v2: Vector2<T>) {
+
     }
 }
 
