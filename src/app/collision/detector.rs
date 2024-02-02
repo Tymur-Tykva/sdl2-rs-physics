@@ -7,6 +7,7 @@
     * Narrow phase uses SAT (Separating Axis Theorem)
  */
 /* --------------------- IMPORTS -------------------- */
+use crate::app::objects::Body;
 // Crates
 use crate::common::{ConvertPrimitives, Crd, GRID_SIZE, TBodyRef, TCollisionPairs, TCollisionGrid, TSharedRef, Vector2};
 
@@ -133,6 +134,7 @@ impl CollisionDetector {
         for pair in pairs {
             let body1 = pair[0].borrow();
             let body2 = pair[1].borrow();
+            let mut colliding = true;
 
             // Get all non-duplicate axes
             let mut axes = body1.axes();
@@ -141,10 +143,44 @@ impl CollisionDetector {
                 axes.push(axis)
             }
 
-            // println!("{:?}", axes);
+            for axis in axes {
+                let b1_bounds = self.projection_bounds(&body1, axis);
+                let b2_bounds = self.projection_bounds(&body2, axis);
+
+                if b1_bounds.1 < b2_bounds.0 || b2_bounds.1 < b1_bounds.0 {
+                    colliding = false;
+                    break;
+                }
+            }
+
+            if colliding {
+                println!("{} and {} are colliding", body1.sides(), body2.sides());
+
+            } else {
+                println!("{} and {} are not colliding", body1.sides(), body2.sides());
+            }
         }
 
         colliding_pairs
+    }
+
+    fn projection_bounds(&self, body: &Body, axis: Vector2<Crd>) -> (Crd, Crd) {
+        let proj = Vector2::dot(axis, body.vertices()[0].to_vec2());
+        let mut max: Crd = 0;
+        let mut min: Crd = proj;
+
+        // Get bounds over polygon`
+        for i in 1..body.sides() as usize {
+            let proj = Vector2::dot(axis, body.vertices()[i].to_vec2());
+
+            if proj < min {
+                min = proj;
+            } else if proj > max {
+                max = proj;
+            }
+        }
+
+        (min, max)
     }
 }
 

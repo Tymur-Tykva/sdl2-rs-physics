@@ -11,6 +11,9 @@ use std::ops::{Add, Div, Mul, Sub};
 use std::rc::Rc;
 
 use num::cast::AsPrimitive;
+use num::integer::{Roots, sqrt};
+use num::{Float, Num};
+use num::traits::real::Real;
 
 use crate::app::objects::Body;
 
@@ -37,16 +40,29 @@ pub struct Vector2<T> {
     pub x: T,
     pub y: T,
 }
-impl<T: Copy> Vector2<T> {
+impl<T: Copy + Num> Vector2<T> {
     pub fn from(value: T) -> Vector2<T> {
         Vector2 {
             x: value,
             y: value,
         }
     }
+    pub fn dot(v1: Vector2<T>, v2: Vector2<T>) -> T {
+        return (v1.x * v2.x) + (v1.y * v2.y);
+    }
+}
 
-    pub fn dot(v1: Vector2<T>, v2: Vector2<T>) {
-
+// Normalization of Vector2
+impl <T: Copy + Roots> Vector2<T> {
+    pub fn norm(self) -> Vector2<T> {
+        let n = sqrt(self.x * self.x + self.y * self.y);
+        self / n
+    }
+}
+impl <T: Copy + Float> Vector2<T> {
+    pub fn norm_f(self) -> Vector2<T> {
+        let n = (self.x * self.x + self.y * self.y).sqrt();
+        self / n
     }
 }
 

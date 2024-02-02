@@ -29,7 +29,7 @@ use ssm::SystemStateManager;
 use crate::app::engine::Engine;
 use crate::app::objects::Body;
 use crate::app::video::Video;
-use crate::common::{ConvertPrimitives, TSharedRef, Vector2};
+use crate::common::{TSharedRef, Vector2};
 use crate::v2;
 
 /* -------------------- VARIABLES ------------------- */

@@ -8,11 +8,9 @@
 /* --------------------- IMPORTS -------------------- */
 // Crates
 use std::cell::RefCell;
-use std::ops::Index;
 use std::rc::Rc;
 
 use sdl2::{Sdl, VideoSubsystem};
-use sdl2::mouse::SystemCursor::No;
 use sdl2::pixels::Color;
 use sdl2::rect::{Point, Rect};
 use sdl2::render::WindowCanvas;

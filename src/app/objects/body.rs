@@ -199,7 +199,7 @@ impl Body {
             let p1 = self.vertices[i].to_vec2();
             let p2 = self.vertices[if i + 1 == self.sides as usize { 0 } else { i + 1 }].to_vec2();
 
-            let edge = p2 - p1;
+            let edge = p1 - p2;
             let normal = v2!(-edge.y, edge.x);
             axes.push(normal);
         }
