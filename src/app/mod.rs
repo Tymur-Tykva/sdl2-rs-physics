@@ -38,7 +38,6 @@ const DEBUG: bool = false;
 /* ------------------- STRUCTURES ------------------- */
 pub struct App {
     shared: TSharedRef,
-    size: Vector2<u32>,
 
     fps: u64,
     delta: u64,
@@ -62,9 +61,7 @@ impl App {
 
         App {
             shared: video.shared.clone(),
-
-            size: v2!(width, height),
-
+            
             fps,
             delta,
 

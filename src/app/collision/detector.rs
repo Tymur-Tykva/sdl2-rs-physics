@@ -7,12 +7,14 @@
     * Narrow phase uses SAT (Separating Axis Theorem)
  */
 /* --------------------- IMPORTS -------------------- */
+use std::cmp::min;
 use crate::app::objects::Body;
 // Crates
-use crate::common::{ConvertPrimitives, Crd, GRID_SIZE, TBodyRef, TCollisionPairs, TCollisionGrid, TSharedRef, Vector2};
+use crate::common::{ConvertPrimitives, Disp, GRID_SIZE, TBodyRef, TCollisionPairs, TCollisionGrid, TSharedRef, Vector2, Crd};
+use crate::v2;
 
 /* -------------------- VARIABLES ------------------- */
-const THRESHOLD: usize = 2;
+
 
 /* ------------------- STRUCTURES ------------------- */
 pub struct CollisionDetector {
@@ -31,26 +33,26 @@ impl CollisionDetector {
         }
     }
 
-    pub fn evaluate(&mut self, bodies: &Vec<TBodyRef>) {
+    pub fn evaluate(&mut self, bodies: &Vec<TBodyRef>) -> TCollisionPairs {
         self.collision_grid = vec![vec![vec![]; GRID_SIZE.y]; GRID_SIZE.x];
         self.out_of_bounds = Vec::new();
 
         let candidate_pairs = self.broad_phase(bodies);
         let colliding_pairs = self.narrow_phase(candidate_pairs);
 
-        // println!("{:?}", colliding_pairs);
+        // println!("Colliding={:?}", colliding_pairs);
+        colliding_pairs
     }
 
     /// Returns object pairs for more precise analysis in the narrow phase
     fn broad_phase(&mut self, bodies: &Vec<TBodyRef>) -> TCollisionPairs {
         // TODO: Destroy objects too far out of bounds
 
-        let window_size = self.shared.borrow_mut().window_size;
-        let bounds: Vector2<Crd> = (window_size / GRID_SIZE.to()).to();
+        let window_size: Vector2<Crd> = self.shared.borrow_mut().window_size.to();
+        let bounds: Vector2<Crd> = window_size / GRID_SIZE.to();
         // Broad-phase results
         let mut marked: Vec<(usize, usize)> = Vec::new();
         let mut pairs: TCollisionPairs = Vec::new();
-
 
         for body_ref in bodies {
             let body = body_ref.borrow_mut();
@@ -65,13 +67,13 @@ impl CollisionDetector {
             }
 
             // Find maximum and minimum points
-            let max_x = points.iter().map(|v2| v2.x).max().unwrap_or(-1);
-            let max_y = points.iter().map(|v2| v2.y).max().unwrap_or(-1);
-            let min_x = points.iter().map(|v2| v2.x).min().unwrap_or(-1);
-            let min_y = points.iter().map(|v2| v2.y).min().unwrap_or(-1);
+            let max_x= points.iter().map(|p| p.disp().x).max().unwrap_or(-1);
+            let max_y= points.iter().map(|p| p.disp().y).max().unwrap_or(-1);
+            let min_x= points.iter().map(|p| p.disp().x).min().unwrap_or(-1);
+            let min_y= points.iter().map(|p| p.disp().y).min().unwrap_or(-1);
 
             // Fill grid
-            let grid_size_crd: Vector2<Crd> = GRID_SIZE.to();
+            let grid_size_crd: Vector2<Disp> = GRID_SIZE.to();
             let mut oob = false;
 
             for i in min_y..=max_y { for j in min_x..=max_x {
@@ -129,12 +131,15 @@ impl CollisionDetector {
 
     /// Confirm/deny collision using the Separating Axis Theorem (SAT)
     fn narrow_phase(&self, pairs: TCollisionPairs) -> TCollisionPairs {
-        let colliding_pairs: TCollisionPairs = Vec::new();
+        let mut colliding_pairs: TCollisionPairs = Vec::new();
 
         for pair in pairs {
             let body1 = pair[0].borrow();
             let body2 = pair[1].borrow();
+            // Collision result
             let mut colliding = true;
+            let mut min_overlap: f64 = -1.0;
+            let mut min_axis: Vector2<f64> = v2!(-1.0);
 
             // Get all non-duplicate axes
             let mut axes = body1.axes();
@@ -143,35 +148,50 @@ impl CollisionDetector {
                 axes.push(axis)
             }
 
+            // Check whether points overlap in axis projection
             for axis in axes {
-                let b1_bounds = self.projection_bounds(&body1, axis);
-                let b2_bounds = self.projection_bounds(&body2, axis);
+                let b1 = self.projection_bounds(&body1, axis);
+                let b2 = self.projection_bounds(&body2, axis);
 
-                if b1_bounds.1 < b2_bounds.0 || b2_bounds.1 < b1_bounds.0 {
+                // Check if they are colliding
+                if b1.1 < b2.0 || b2.1 < b1.0 {
                     colliding = false;
                     break;
+                } else {
+                    // Update minimum overlap
+                    let overlap = if b1.1 - b2.0 <= b2.1 - b1.0 { b1.1 - b2.0 } else { b2.1 - b1.0 };
+
+                    if min_overlap == -1.0 || overlap < min_overlap {
+                        min_overlap = overlap;
+                        min_axis = axis;
+                    }
                 }
             }
 
             if colliding {
-                println!("{} and {} are colliding", body1.sides(), body2.sides());
-
-            } else {
-                println!("{} and {} are not colliding", body1.sides(), body2.sides());
+                colliding_pairs.push(pair.clone());
+                println!("colliding pair");
+                println!("overlap={min_overlap}\naxis={:?}", min_axis);
             }
         }
+
+        // Update shared narrow-phase collision pair indicator
+        self.shared.borrow_mut().narrow_phase_pairs = colliding_pairs.clone();
 
         colliding_pairs
     }
 
-    fn projection_bounds(&self, body: &Body, axis: Vector2<Crd>) -> (Crd, Crd) {
-        let proj = Vector2::dot(axis, body.vertices()[0].to_vec2());
-        let mut max: Crd = 0;
-        let mut min: Crd = proj;
+    /// Find the min/max points of body projected onto a given axis
+    fn projection_bounds(&self, body: &Body, axis: Vector2<f64>) -> (f64, f64) {
+        let vertices: Vec<Vector2<f64>> = body.vertices().clone().iter().map(|vtx| body.globalise(vtx.to_vec2()).to()).collect();
+
+        let proj = Vector2::dot(vertices[0], axis);
+        let mut max: f64 = proj ;
+        let mut min: f64 = proj;
 
         // Get bounds over polygon`
         for i in 1..body.sides() as usize {
-            let proj = Vector2::dot(axis, body.vertices()[i].to_vec2());
+            let proj = Vector2::dot(vertices[i], axis);
 
             if proj < min {
                 min = proj;

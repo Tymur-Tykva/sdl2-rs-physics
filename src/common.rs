@@ -11,19 +11,19 @@ use std::ops::{Add, Div, Mul, Sub};
 use std::rc::Rc;
 
 use num::cast::AsPrimitive;
-use num::integer::{Roots, sqrt};
-use num::{Float, Num};
-use num::traits::real::Real;
+use num::Num;
 
 use crate::app::objects::Body;
 
 /* -------------------- VARIABLES ------------------- */
 // General
-pub type Crd = i32;
+pub type Disp = i32;
+pub type Crd = f64;
 pub type TSharedRef = Rc<RefCell<Shared>>;
 
 // Collision
-pub const GRID_SIZE: Vector2<usize> = crate::v2!(15, 15);
+pub const GRID_SIZE: Vector2<usize> = crate::v2!(20, 20);
+pub const PRECISION: i32 = 6;
 pub type TBodyRef = Rc<RefCell<Body>>;
 pub type TCollisionGrid = Vec<Vec<Vec<TBodyRef>>>;
 pub type TCollisionPairs = Vec<[TBodyRef; 2]>;
@@ -33,6 +33,7 @@ pub struct Shared {
     pub window_size: Vector2<u32>,
     pub collision_grid: TCollisionGrid,
     pub broad_phase_pairs: TCollisionPairs,
+    pub narrow_phase_pairs: TCollisionPairs,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -40,29 +41,39 @@ pub struct Vector2<T> {
     pub x: T,
     pub y: T,
 }
-impl<T: Copy + Num> Vector2<T> {
+impl<T: Copy + Num + AsPrimitive<f64> + AsPrimitive<Disp>> Vector2<T> {
     pub fn from(value: T) -> Vector2<T> {
         Vector2 {
             x: value,
             y: value,
         }
     }
+    pub fn mag(self) -> f64 {
+        let v: Vector2<f64> = self.to();
+        let v2 = v * v;
+        (v2.x + v2.y).sqrt()
+    }
+    pub fn norm(self) -> Vector2<f64> {
+        let v: Vector2<f64> = self.to();
+        let n = self.mag();
+
+        Vector2 {
+            x: v.x / n,
+            y: v.y / n,
+        }
+    }
+    pub fn disp(self) -> Vector2<Disp> {
+        self.to()
+    }
     pub fn dot(v1: Vector2<T>, v2: Vector2<T>) -> T {
         return (v1.x * v2.x) + (v1.y * v2.y);
     }
-}
+    pub fn project(v1: Vector2<T>, v2: Vector2<T>) -> Vector2<f64> {
+        let v1: Vector2<f64> = v1.to();
+        let v2: Vector2<f64> = v2.to();
+        let dot = Vector2::dot(v1, v2);
 
-// Normalization of Vector2
-impl <T: Copy + Roots> Vector2<T> {
-    pub fn norm(self) -> Vector2<T> {
-        let n = sqrt(self.x * self.x + self.y * self.y);
-        self / n
-    }
-}
-impl <T: Copy + Float> Vector2<T> {
-    pub fn norm_f(self) -> Vector2<T> {
-        let n = (self.x * self.x + self.y * self.y).sqrt();
-        self / n
+        return v2 * (dot / v2.mag().powi(2));
     }
 }
 
@@ -181,6 +192,11 @@ pub struct AABB {
 /* --------------------- MACROS --------------------- */
 #[macro_export]
 macro_rules! v2 {
+    // Shorthand for: Vector2::from(_)
+    ($n:expr) => {
+        Vector2::from($n)
+    };
+
     // Shorthand for: Vector2 {}
     // e.g. v2!(16, 16)
     ($x:expr, $y:expr) => {
@@ -203,4 +219,6 @@ macro_rules! vtx {
 }
 
 /* ------------------- FUNCTIONS ------------------- */
-
+pub fn round(n: f64) -> f64 {
+    return (n * 10f64.powi(PRECISION)).round() / 10f64.powi(PRECISION)
+}
