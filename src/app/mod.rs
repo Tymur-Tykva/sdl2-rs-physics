@@ -29,8 +29,8 @@ use ssm::SystemStateManager;
 use crate::app::engine::Engine;
 use crate::app::objects::Body;
 use crate::app::video::Video;
-use crate::common::{TSharedRef, Vector2};
-use crate::v2;
+use crate::common::{TSharedRef, Vector2, BodyForm};
+use crate::{poly, rect, v2};
 
 /* -------------------- VARIABLES ------------------- */
 const DEBUG: bool = false;
@@ -59,6 +59,15 @@ impl App {
         let fps = 1000/60;
         let delta = fps;
 
+        let mut ssm = SystemStateManager::new();
+        // Initialize window boundaries
+        ssm.add_bodies(vec![
+            rect!(v2!(-8, 0), 10, height).set_frozen(true),
+            rect!(v2!(width as i32 - 2 , 0), 10, height).set_frozen(true),
+            rect!(v2!(0, -8), width, 10).set_frozen(true),
+            rect!(v2!(0, height as i32 - 2), width, 10).set_frozen(true)
+        ]);
+
         App {
             shared: video.shared.clone(),
             
@@ -68,7 +77,7 @@ impl App {
             sdl2_ctx,
             video,
             engine,
-            system_state_manager: SystemStateManager::new(),
+            system_state_manager: ssm,
         }
     }
 

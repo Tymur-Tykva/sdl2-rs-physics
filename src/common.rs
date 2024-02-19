@@ -7,6 +7,7 @@
 /* --------------------- IMPORTS -------------------- */
 // Crates
 use std::cell::RefCell;
+use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Sub};
 use std::rc::Rc;
 
@@ -33,7 +34,7 @@ pub struct Shared {
     pub window_size: Vector2<u32>,
     pub collision_grid: TCollisionGrid,
     pub broad_phase_pairs: TCollisionPairs,
-    pub narrow_phase_pairs: TCollisionPairs,
+    pub narrow_phase_pairs: Vec<CollisionResult>,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -115,12 +116,12 @@ impl<T: Sub<Output=T>> Sub<Vector2<T>> for Vector2<T> {
         }
     }
 }
-impl<T: Div<Output=T>> Div<Vector2<T>> for Vector2<T> {
+impl<T: Div<Output=T> + Num + Copy + Debug> Div<Vector2<T>> for Vector2<T> {
     type Output = Self;
     fn div(self, rhs: Self) -> Self::Output {
         Self {
-            x: self.x / rhs.x,
-            y: self.y / rhs.y,
+            x: if rhs.x.is_zero() { rhs.x } else { self.x / rhs.x },
+            y: if rhs.y.is_zero() { rhs.y } else { self.y / rhs.y },
         }
     }
 }
@@ -187,6 +188,13 @@ pub enum BodyForm {
 #[derive(Debug, Clone)]
 pub struct AABB {
     pub points: Vec<Vector2<Crd>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CollisionResult {
+    pub bodies: [TBodyRef; 2],
+    pub normal: Vector2<f64>,
+    pub overlap: f64,
 }
 
 /* --------------------- MACROS --------------------- */

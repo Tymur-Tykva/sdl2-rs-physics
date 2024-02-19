@@ -67,16 +67,15 @@ impl<'a> Video {
             // window,
 
             aabb: true,
-            grid: true,
+            grid: false,
             points: true,
             wireframe: false,
-            collision_indicator: true,
+            collision_indicator: false,
         }
     }
 
     pub fn point(&mut self, c: Vector2<Disp>, color: Color) {
         let cached_color = self.canvas.draw_color();
-
         self.canvas.set_draw_color(color);
         self.canvas.fill_rect(Rect::new(c.x - (POINT_SIZE / 2) as Disp, c.y - (POINT_SIZE / 2) as Disp, POINT_SIZE, POINT_SIZE)).unwrap();
         self.canvas.set_draw_color(cached_color);
@@ -92,7 +91,7 @@ impl<'a> Video {
 
     pub fn draw_body(&mut self, body_ref: &TBodyRef) {
         let body = body_ref.borrow_mut();
-        let vertices = body.vertices();
+        let vertices = &body.vertices;
 
         // Draw AABB
         if self.aabb {
@@ -110,8 +109,8 @@ impl<'a> Video {
             for i in 0..(vertices.len() - 1) {
                 for j in i..vertices.len() {
                     self.line(
-                        body.globalise(body.vertices()[i].to_vec2()).disp(),
-                        body.globalise(body.vertices()[j].to_vec2()).disp(),
+                        body.globalise(body.vertices[i].to_vec2()).disp(),
+                        body.globalise(body.vertices[j].to_vec2()).disp(),
                         Color::GREY
                     )
                 }
@@ -214,8 +213,8 @@ impl<'a> Video {
             }
 
             for pair in narrow_phase_pairs {
-                let b1 = pair[0].borrow_mut();
-                let b2 = pair[1].borrow_mut();
+                let b1 = pair.bodies[0].borrow_mut();
+                let b2 = pair.bodies[1].borrow_mut();
 
                 self.line(b1.globalise(v2!(0.0)).disp(), b2.globalise(v2!(0.0)).disp(), Color::RED);
             }

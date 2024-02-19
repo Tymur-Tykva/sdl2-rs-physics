@@ -7,10 +7,9 @@
     * Narrow phase uses SAT (Separating Axis Theorem)
  */
 /* --------------------- IMPORTS -------------------- */
-use std::cmp::min;
-use crate::app::objects::Body;
 // Crates
-use crate::common::{ConvertPrimitives, Disp, GRID_SIZE, TBodyRef, TCollisionPairs, TCollisionGrid, TSharedRef, Vector2, Crd};
+use crate::app::objects::Body;
+use crate::common::{ConvertPrimitives, Disp, GRID_SIZE, TBodyRef, TCollisionPairs, TCollisionGrid, TSharedRef, Vector2, Crd, CollisionResult};
 use crate::v2;
 
 /* -------------------- VARIABLES ------------------- */
@@ -33,7 +32,7 @@ impl CollisionDetector {
         }
     }
 
-    pub fn evaluate(&mut self, bodies: &Vec<TBodyRef>) -> TCollisionPairs {
+    pub fn evaluate(&mut self, bodies: &Vec<TBodyRef>) -> Vec<CollisionResult> {
         self.collision_grid = vec![vec![vec![]; GRID_SIZE.y]; GRID_SIZE.x];
         self.out_of_bounds = Vec::new();
 
@@ -130,8 +129,8 @@ impl CollisionDetector {
     }
 
     /// Confirm/deny collision using the Separating Axis Theorem (SAT)
-    fn narrow_phase(&self, pairs: TCollisionPairs) -> TCollisionPairs {
-        let mut colliding_pairs: TCollisionPairs = Vec::new();
+    fn narrow_phase(&self, pairs: TCollisionPairs) -> Vec<CollisionResult> {
+        let mut colliding_pairs: Vec<CollisionResult> = Vec::new();
 
         for pair in pairs {
             let body1 = pair[0].borrow();
@@ -169,9 +168,13 @@ impl CollisionDetector {
             }
 
             if colliding {
-                colliding_pairs.push(pair.clone());
-                println!("colliding pair");
-                println!("overlap={min_overlap}\naxis={:?}", min_axis);
+                let colliding_pair = CollisionResult {
+                    bodies: pair.clone(),
+                    normal: min_axis,
+                    overlap: min_overlap,
+                };
+
+                colliding_pairs.push(colliding_pair);
             }
         }
 
@@ -183,14 +186,14 @@ impl CollisionDetector {
 
     /// Find the min/max points of body projected onto a given axis
     fn projection_bounds(&self, body: &Body, axis: Vector2<f64>) -> (f64, f64) {
-        let vertices: Vec<Vector2<f64>> = body.vertices().clone().iter().map(|vtx| body.globalise(vtx.to_vec2()).to()).collect();
+        let vertices: Vec<Vector2<f64>> = body.vertices.clone().iter().map(|vtx| body.globalise(vtx.to_vec2()).to()).collect();
 
         let proj = Vector2::dot(vertices[0], axis);
-        let mut max: f64 = proj ;
+        let mut max: f64 = proj;
         let mut min: f64 = proj;
 
         // Get bounds over polygon`
-        for i in 1..body.sides() as usize {
+        for i in 1..body.sides as usize {
             let proj = Vector2::dot(vertices[i], axis);
 
             if proj < min {
