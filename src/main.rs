@@ -4,16 +4,14 @@
     Description:
     * Serves as an abstraction layer on top of the App {}
     * Used to interact with public App {} functions (setting the scene, starting the loop, etc.)
- */
+*/
 /* --------------------- IMPORTS -------------------- */
 // Modules
 pub mod app;
 pub mod common;
 // Crates
+use crate::common::{BodyForm, Vector2};
 use crate::app::{App, objects::Body};
-use crate::app::objects::CAddInput::*;
-use crate::common::{Vector2, BodyForm};
-
 
 /* -------------------- VARIABLES ------------------- */
 
@@ -25,15 +23,20 @@ use crate::common::{Vector2, BodyForm};
 fn main() {
     let mut my_app = App::new("DEFAULT", 1000, 600);
 
-    let bodies = Bodies(vec![
-        rect!(v2!(100, 105), 100, 100),
-        rect!(v2!(250, 293), 100, 100),
-        rect!(v2!(400, 290), 100, 100),
-        rect!(v2!(550, 315), 100, 100),
-        rect!(v2!(700, 164), 100, 100),
-        rect!(v2!(850, 339), 100, 100),
-    ]);
-    my_app.world.add(bodies);
+    // PENTAGON SETUP
+    let bodies = vec![
+        poly!(v2!(300, 250), 100, 17),
+        poly!(v2!(370, 100), 50, 12, 1.5),
+    ];
+
+
+    // RECT SETUP
+    // let bodies = vec![
+    //     rect!(v2!(370, 300), 200, 100).set_frozen(true),
+    //     rect!(v2!(450, 170), 100, 50, 1.5),
+    // ];
+
+    my_app.add_bodies(bodies);
 
     my_app.start();
 }

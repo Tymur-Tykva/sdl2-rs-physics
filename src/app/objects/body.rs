@@ -7,116 +7,81 @@
  */
 /* --------------------- IMPORTS -------------------- */
 // Crates
-use crate::common::{BodyForm, Vector2, Vertex, Crd, ConvertPrimitives, AABB};
-use crate::{v2, vtx};
 use std::f64::consts::PI;
+
+use crate::common::{AABB, BodyForm, ConvertPrimitives, Disp, Crd, Vector2, Vertex};
+use crate::{v2, vtx};
 
 /* -------------------- VARIABLES ------------------- */
 
 
 /* ------------------- STRUCTURES ------------------- */
 /// Internal struct for defining & updating bodies (any object which has a physical presence in the simulation).
-///
-/// # Properties
-/// ## Internal
-/// * `form`: The polygon's shape; i.e. whether it is a polygon, circle, etc.; certain internal calculations handled differently per form
-/// * `position`: The body's global position
-/// * `rotation`: The body's rotation from 'true north'. Measured in radians
-/// * `origin`: Defines where the body is to be drawn from. SDL2 draws objects from the top-left corner, which is unsuitable for polygons, which use the Cartesian center.
-/// * `radius`: The 'size' of polygons & circles. Defines where points are plotted in polygons. Ignore for rect-likes.
-///
-/// ## Polygons
-/// Everything in this section exclusively pertains to bodies with `form: BodyForm::Polygon`.
-///
-/// * `sides`: How many edges the polygon has. MUST to be 4 for rect-likes.
-/// * `vertices`: Internal vector for keeping track of vertex positions.
-/// * `edges`: Internal vector for keeping track of edges. TODO Consider removal
-/// * `width`: The width of a rect-like.
-/// * `height`: The height of a rect-like.
-///
-/// ## Physics
-/// Everything in this section contains properties related to physics calculations.
-///
-/// * `center`: The body's center of mass. Equal to the body's center-point for uniform bodies.
-/// * `frozen`: Whether the body's position/rotation is to be ignored at the physics step.
-/// * `mass`: The body's mass. Related to the `center` property.
-/// * `velocity`
-/// * `ang_velocity`
-/// * `air_friction`
-///
 #[derive(Debug, PartialEq)]
 pub struct Body {
     // Internal
-    form: BodyForm,
-    position: Vector2<Crd>,
-    prev_position: Vector2<Crd>,
-    rotation: i64,
-    origin: Vector2<Crd>,
-    radius: Option<u32>,
+    pub form: BodyForm,
+    pub position: Vector2<Crd>,
+    pub rotation: f64,
+    pub origin: Vector2<Crd>,
+    pub radius: Option<f64>,
     // BodyForm::Polygon
-    sides: u32,
-    vertices: Vec<Vertex>,
-    width: Option<u32>,
-    height: Option<u32>,
+    pub sides: u32,
+    pub vertices: Vec<Vertex>,
+    pub width: Option<u32>,
+    pub height: Option<u32>,
     // Physics
-    center: Vector2<f64>, // Center of mass; measured from origin
-    frozen: bool, // Whether the body's forces shouldn't be updated at the physics step
-    mass: u32, // Mass of the object, exerted at it's center of mass
-    velocity: Vector2<f64>,
-    force_buffer: Vector2<f64>, // Forces applied onto the body, pre Body::update()
-    angular_velocity: i32,
-    air_friction: f64,
+    pub center: Vector2<f64>, // Center of mass; measured radius as f64 from origin
+    pub frozen: bool, // Whether the body's forces shouldn't be updated at the physics step
+    pub mass: f64, // Mass of the object, exerted at it's center of mass
+    pub velocity: Vector2<f64>,
+    pub restitution: f64,
+    // pub initial_friction: f64,
+    // pub continuous_friction: f64,
+    pub angular_velocity: f64,
+    pub torque: f64,
+    pub air_friction: f64,
+    // Forces applied onto the body, pre Body::update()
+    pub force_buffer: Vector2<f64>,
+    pub inertia_buffer: f64,
+    // Meta
+    pub collision_group: i32,
+    pub ignore_groups: Vec<i32>,
 }
 
 
 /* -------------------- FUNCTIONS ------------------- */
 impl Body {
     /// Constructor for the Body struct.
-    ///
-    /// # Arguments
-    ///
-    /// * `form`: The body's shape; whether it is a Polygon/Circle/etc.
-    /// * `position`: The initial global position of the body.
-    /// * `radius`: Defines the size of polygons/circles. Ignore for rect-likes. TODO convert to Option()
-    /// * `sides`: How many edges the shape has; used in `BodyForm::Polygon`.
-    /// * `width`: Defines the width of a rect-like.
-    /// * `height`: Defines the height of a rect-like.
-    /// * `mass`: The object's mass.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let body = Body::new(BodyForm::Polygon, v2!(0, 0), 10, 6, None, None, 1);
-    /// ```
     pub fn new(
-        form: BodyForm, position: Vector2<Crd>, radius: Option<u32>, // Internal properties
-        sides: u32, width: Option<u32>, height: Option<u32>,         // Polygonal properties
-        mass: u32,                                                   // Physics properties
+        form: BodyForm, position: Vector2<Disp>, radius: Option<f64>, // Internal properties
+        sides: u32, width: Option<u32>, height: Option<u32>,          // Polygonal properties
+        mass: f64, restitution: f64,                                  // Physics properties
     ) -> Self {
-        let origin;
-        let center;
-        let vertices;
+        let origin: Vector2<Crd>;
+        let center: Vector2<f64>;
+        let vertices: Vec<Vertex>;
 
         // If the body is a rect-like
         if sides == 4 && width.is_some() && height.is_some() {
-            let width = width.unwrap_or(1) as Crd;
+            let width = width.unwrap_or(1)   as Crd;
             let height = height.unwrap_or(1) as Crd;
 
-            origin = v2!(0, 0);
-            center = v2!((width/2) as f64, (height/2) as f64);
+            origin = v2!(0).to();
+            center = v2!(width/2.0, height/2.0).to();
 
             // Manually define initial vertex positions
             vertices = vec![
-                vtx!(0, 0, 0         ),
-                vtx!(1, 0, height    ),
+                vtx!(0, 0.0, 0.0     ),
+                vtx!(1, 0.0, height  ),
                 vtx!(2, width, height),
-                vtx!(3, width, 0     ),
+                vtx!(3, width, 0.0   ),
             ];
             // Standard polygon formation
         } else {
-            let radius = radius.unwrap_or(1);
-            origin = v2!(radius as Crd, radius as Crd);
-            center = v2!(radius as f64, radius as f64);
+            let radius = radius.unwrap_or(1f64);
+            origin = Vector2::from(radius).to();
+            center = Vector2::from(radius).to();
 
             // Call vertex calculation
             vertices = Body::calculate_vertices(sides, radius);
@@ -125,9 +90,8 @@ impl Body {
         Body {
             // Internal
             form,
-            position,
-            prev_position: position.clone(),
-            rotation: 0,
+            position: position.to(),
+            rotation: 0.0,
             origin,
             radius,
             // BodyForm::Polygon
@@ -136,31 +100,37 @@ impl Body {
             width,
             height,
             // Physics
-            center,
-            frozen: false,
             mass,
-            velocity: v2!(0f64, 0f64),
-            force_buffer: v2!(0f64, 0f64),
-            angular_velocity: 0,
+            center,
+            restitution,
+            // initial_friction: 0.9,
+            // continuous_friction: 0.7,
+            frozen: false,
+            velocity: v2!(0.0),
+            angular_velocity: 0.0,
+            torque: 0.0,
             air_friction: 0.01,
+            force_buffer: v2!(0.0),
+            inertia_buffer: 0.0,
+            // Meta
+            collision_group: 0,
+            ignore_groups: vec![],
         }
     }
 
     /// Physics update for the body. Called every frame.
-    pub fn update(&mut self, delta: u64) {
-        let delta2 = (delta * delta) as f64;
-        let position_buffer = self.position.clone();
+    pub fn update(&mut self, dt: f64) {
+        if self.frozen { return; }
 
-        // let acceleration = (self.position - self.prev_position) / v2!(delta as Crd, delta as Crd);
-        // let acceleration = v2!(acceleration.x as f64, acceleration.y as f64);
+        let inv_mass = 1.0 / self.mass;
+        let inv_inertia = if self.inertia_buffer != 0.0 { 1.0 / self.inertia_buffer } else { 0.0 };
+        // let inv_inertia = 1.0;
 
-        // Update velocity: uses Verlet Integration
-        self.velocity = self.force_buffer * delta2;
-        let velocity = self.velocity.to();
+        self.velocity = self.velocity + self.force_buffer * inv_mass * dt;
+        self.angular_velocity = self.angular_velocity + self.torque * inv_inertia * dt;
 
-        // Update position
-        self.position = self.position + velocity;
-        self.prev_position = position_buffer;
+        self.position = self.position + self.velocity * dt;
+        self.rotation = self.rotation + self.angular_velocity * dt;
     }
 
     /// Evaluates whether the given Body object is a rect-like.
@@ -170,36 +140,37 @@ impl Body {
     }
 
     /// Internal method for calculating the initial vertex position of a polygon.
-    fn calculate_vertices(sides: u32, radius: u32) -> Vec<Vertex> {
+    fn calculate_vertices(sides: u32, radius: f64) -> Vec<Vertex> {
         let a = (2f64 * PI) / sides as f64;
-        let r = radius as f64;
         let mut vertices = Vec::new();
 
 
         // Optimization for when number of sides is even
         if sides % 2 == 0 {
             for i in 1..=(sides - 2) / 2 {
-                let x = (r * (a * i as f64).cos()) as Crd;
-                let y = (r * (a * i as f64).sin()) as Crd;
+                let j = i as f64;
+                let x = (radius * (a * j).cos()) as Crd;
+                let y = (radius * (a * j).sin()) as Crd;
 
                 vertices.push(vtx!(i,       x, -y));
-                vertices.push(vtx!(sides-i, x, y     ));
+                vertices.push(vtx!(sides-i, x, y));
             }
 
-            vertices.push(vtx!(0,       radius as Crd,    0));
-            vertices.push(vtx!(sides/2, -(radius as Crd), 0));
+            vertices.push(vtx!(0,       radius,  0.0));
+            vertices.push(vtx!(sides/2, -radius, 0.0));
         }
         // Optimization for when number of sides is odd
         else {
             for i in 1..=(sides - 1) / 2 {
-                let x = radius as f64 * (a * i as f64).cos();
-                let y = radius as f64 * (a * i as f64).sin();
+                let j = i as f64;
+                let x = radius * (a * j).cos() as Crd;
+                let y = radius * (a * j).sin() as Crd;
 
-                vertices.push(vtx!(i,         x as Crd, -y as Crd));
-                vertices.push(vtx!(sides - i, x as Crd, y as Crd));
+                vertices.push(vtx!(i,         x, -y));
+                vertices.push(vtx!(sides - i, x, y ));
             }
 
-            vertices.push(vtx!(0, radius as Crd, 0));
+            vertices.push(vtx!(0, radius as Crd, 0.0));
         }
 
         vertices.sort_by(|&a, &b| (a.id).cmp(&b.id));
@@ -208,50 +179,69 @@ impl Body {
 
     /// Convert local Vector2 (vector about the object's origin) into global space
     pub fn globalise(&self, vec: Vector2<Crd>) -> Vector2<Crd> {
-        self.origin + self.position + vec
+        self.origin + self.position + vec.to()
     }
 
     /// Returns the axis-aligned bounding box of the object.
     pub fn aabb(&self) -> AABB {
-        let extent;
+        let points;
 
         if self.radius.is_some() {
-            extent = Vector2::from(self.radius.unwrap() / 2);
+            let r = self.radius.unwrap() as Crd;
+
+            points = vec![v2!(-r, -r), v2!(r, -r), v2!(r, r), v2!(-r, r)]
+                .iter().map(|&v2| self.globalise(v2)).collect();
         } else {
-            extent = v2!(self.width.unwrap() / 2, self.height.unwrap() / 2);
+            let w = self.width.unwrap() as Crd;
+            let h = self.height.unwrap() as Crd;
+
+            points = vec![v2!(0.0, 0.0), v2!(0.0, h), v2!(w, h), v2!(w, 0.0)]
+                .iter().map(|&v2| self.globalise(v2)).collect();
         }
 
         AABB {
-            center: self.globalise(self.position),
-            extent,
+            points
         }
     }
 
+    pub fn axes(&self) -> Vec<Vector2<f64>> {
+        let mut axes = Vec::new();
+
+        for i in 0..self.sides as usize {
+            let p1 = self.vertices[i].to_vec2();
+            let p2 = self.vertices[if i + 1 == self.sides as usize { 0 } else { i + 1 }].to_vec2();
+
+            let edge = p2 - p1;
+            let normal = v2!(-edge.y, edge.x).norm();
+
+            // println!("Axis={:?}", normal);
+            // println!("Norm={:?}", normal.norm());
+
+            axes.push(normal);
+        }
+
+        axes
+    }
+
     /* --------------------- GETTERS -------------------- */
-    pub fn position(&self) -> Vector2<Crd>  {
-        self.position
-    }
-    pub fn vertices(&self) -> &Vec<Vertex> {
-        &self.vertices
-    }
-    pub fn origin(&self) -> Vector2<Crd> {
-        self.origin
-    }
-    pub fn frozen(&self) -> bool {
-        self.frozen
-    }
-    pub fn force_buffer(&self) -> Vector2<f64> {
-        self.force_buffer
+    pub fn ident(&self) -> () {
+        println!("- sides={:?}\n- w={:?}", self.sides, self.width.unwrap_or(0));
     }
     /* --------------------- SETTERS -------------------- */
-    pub fn set_position(&mut self, position: Vector2<Crd>) {
-        self.position = position;
-    }
-    pub fn set_force_buffer(&mut self, force_buffer: Vector2<f64>) {
-        self.force_buffer = force_buffer;
-    }
     pub fn clear_force_buffer(&mut self) {
         self.force_buffer = v2!(0f64, 0f64);
+    }
+    pub fn set_frozen(mut self, frozen: bool) -> Self {
+        self.frozen = frozen;
+        self
+    }
+    pub fn set_collision_group(mut self, group: i32) -> Self {
+        self.collision_group = group;
+        self
+    }
+    pub fn set_ignore_groups(mut self, groups: Vec<i32>) -> Self {
+        self.ignore_groups = groups;
+        self
     }
 }
 
@@ -260,11 +250,11 @@ impl Body {
 macro_rules! poly {
     // Generate polygon with a mass of 1
     ($pos:expr, $radius:expr, $sides:expr) => {
-        Body::new(BodyForm::Polygon, $pos, Some($radius), $sides, None, None, 1)
+        Body::new(BodyForm::Polygon, $pos, Some($radius as f64), $sides, None, None, 1.0, 0.7)
     };
     // Generate polygon with custom mass
     ($pos:expr, $radius:expr, $sides:expr, $mass:expr) => {
-        Body::new(BodyForm::Polygon, $pos, Some($radius), $sides, None, None, $mass)
+        Body::new(BodyForm::Polygon, $pos, Some($radius as f64), $sides, None, None, $mass, 0.7)
     };
 }
 
@@ -272,10 +262,10 @@ macro_rules! poly {
 macro_rules! rect {
     // Generate a rect-like with a mass of 1
     ($pos:expr, $width:expr, $height:expr) => {
-        Body::new(BodyForm::Polygon, $pos, None, 4, Some($width), Some($height), 1)
+        Body::new(BodyForm::Polygon, $pos, None, 4, Some($width), Some($height), 1.0, 0.7)
     };
     // Generate a rect-like with a custom mass
     ($pos:expr, $width:expr, $height:expr, $mass:expr) => {
-        Body::new(BodyForm::Polygon, $pos, None, 4, Some($width), Some($height), $mass)
+        Body::new(BodyForm::Polygon, $pos, None, 4, Some($width), Some($height), $mass, 0.7)
     };
 }

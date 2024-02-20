@@ -7,12 +7,9 @@
  */
 /* --------------------- IMPORTS -------------------- */
 // Crates
-use crate::app::collision::CollisionDetector;
-use crate::app::objects::{Body, Collection};
-use crate::common::{Vector2, Vector2M};
-use sdl2::video::Window;
+use crate::app::collision::{CollisionDetector, CollisionResolver};
+use crate::common::{TBodyRef, TSharedRef, Vector2, Vector2M};
 use crate::v2;
-
 
 /* -------------------- VARIABLES ------------------- */
 
@@ -20,49 +17,52 @@ use crate::v2;
 /* ------------------- STRUCTURES ------------------- */
 
 pub struct Engine {
+    shared: TSharedRef,
     gravity: Vector2M<f64>,
-    collision: CollisionDetector,
+    detector: CollisionDetector,
+    resolver: CollisionResolver,
 }
-
 
 /* -------------------- FUNCTIONS ------------------- */
 impl Engine {
-    pub fn new() -> Self {
-        // let window = Rc::from(RefCell::from(window));
-
+    pub fn new(shared: TSharedRef) -> Self {
         Engine {
-            gravity: v2!(0f64, 1f64, 0.001),
-            collision: CollisionDetector::new(),
+            shared: shared.clone(),
+            gravity: v2!(0f64, 1f64, 9.8),
+            detector: CollisionDetector::new(shared.clone()),
+            resolver: CollisionResolver::new(shared.clone()),
+
         }
     }
 
-    pub fn step(&self, window: &Window, world: &mut Collection, delta: u64) {
-        let bodies = world.bodies();
-
+    pub fn step(&mut self, bodies: &Vec<TBodyRef>, dt: f64) {
         // Resolve gravity
-        for body in world.mut_bodies() {
-            // self.resolve_gravity(body);
+        for body_ref in bodies {
+            self.resolve_gravity(body_ref);
         }
 
         // Update body position/rotation
-        for body in world.mut_bodies() {
-            body.update(delta);
+        for body_ref in bodies {
+            let mut body = body_ref.borrow_mut();
+            body.update(dt);
         }
 
         // TODO: Resolve constraints
 
         // TODO: Resolve collisions
-        self.collision.evaluate(world.bodies(), window.size());
+        let result = self.detector.evaluate(bodies);
+        self.resolver.resolve(result);
     }
 
-    fn resolve_gravity(&self, body: &mut Body) {
-        if body.frozen() {
+    fn resolve_gravity(&self, body: &TBodyRef) {
+        let mut body = body.borrow_mut();
+
+        if body.frozen {
             return;
         }
 
-        let gravity = self.gravity.to_vec2() * Vector2::from(self.gravity.m);
-        let force = gravity + body.force_buffer(); // TODO: factor-in body mass (*body.mass)
-        body.set_force_buffer(force);
+        let gravity = self.gravity.to_vec2() * self.gravity.m;
+        body.force_buffer = body.force_buffer + gravity / body.mass;
     }
 }
 
