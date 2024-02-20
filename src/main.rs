@@ -25,8 +25,8 @@ fn main() {
 
     // PENTAGON SETUP
     let bodies = vec![
-        poly!(v2!(300, 250), 100, 17).set_frozen(true),
-        poly!(v2!(350, 100), 50, 12, 1.5),
+        poly!(v2!(300, 250), 100, 17),
+        poly!(v2!(370, 100), 50, 12, 1.5),
     ];
 
 

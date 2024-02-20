@@ -30,17 +30,17 @@ use crate::app::engine::Engine;
 use crate::app::objects::Body;
 use crate::app::video::Video;
 use crate::common::{TSharedRef, Vector2, BodyForm};
-use crate::{poly, rect, v2};
+use crate::{rect, v2};
 
 /* -------------------- VARIABLES ------------------- */
-const DEBUG: bool = false;
+
 
 /* ------------------- STRUCTURES ------------------- */
 pub struct App {
     shared: TSharedRef,
 
     fps: u64,
-    delta: u64,
+    delta: f64,
 
     sdl2_ctx: Sdl,
     video: Video,
@@ -56,17 +56,30 @@ impl App {
         let video = Video::new(&sdl2_ctx, name, width, height);
         let engine = Engine::new(video.shared.clone());
 
-        let fps = 1000/60;
-        let delta = fps;
+        let fps = 60;
+        let delta = 1.0 / fps as f64;
 
         let mut ssm = SystemStateManager::new();
         // Initialize window boundaries
-        ssm.add_bodies(vec![
-            rect!(v2!(-8, 0), 10, height).set_frozen(true),
-            rect!(v2!(width as i32 - 2 , 0), 10, height).set_frozen(true),
-            rect!(v2!(0, -8), width, 10).set_frozen(true),
-            rect!(v2!(0, height as i32 - 2), width, 10).set_frozen(true)
-        ]);
+        let bodies: Vec<Body> = vec![
+            rect!(v2!(-8, 0), 10, height)
+                .set_frozen(true)
+                .set_collision_group(-1)
+                .set_ignore_groups(vec![-1]),
+            rect!(v2!(width as i32 - 2 , 0), 10, height)
+                .set_frozen(true)
+                .set_collision_group(-1)
+                .set_ignore_groups(vec![-1]),
+            rect!(v2!(0, -8), width, 10)
+                .set_frozen(true)
+                .set_collision_group(-1)
+                .set_ignore_groups(vec![-1]),
+            rect!(v2!(0, height as i32 - 2), width, 10)
+                .set_frozen(true)
+                .set_collision_group(-1)
+                .set_ignore_groups(vec![-1]),
+        ];
+        ssm.add_bodies(bodies);
 
         App {
             shared: video.shared.clone(),
@@ -102,32 +115,30 @@ impl App {
                 }
             }
 
-            // Update window size
-            let cur_window_size = v2!(self.window().size().0, self.window().size().1);
-            if window_size != cur_window_size {
-                window_size = cur_window_size;
-                self.shared.borrow_mut().window_size = cur_window_size;
-            }
-
-            if !(DEBUG && stepped) {
-                stepped = true;
-
-                self.video.pre_draw();
-
-                // Draw objects in world collection
-                for body_ref in self.system_state_manager.bodies() {
-                    self.video.draw_body(body_ref);
-                }
-
-                // Update physics
-                self.engine.step(self.system_state_manager.bodies(), self.delta);
-
-                // Apply changes
-                self.video.canvas.present();
-            }
-
-            thread::sleep(Duration::from_millis(self.fps));
+        // Update window size
+        let cur_window_size = v2!(self.window().size().0, self.window().size().1);
+        if window_size != cur_window_size {
+            window_size = cur_window_size;
+            self.shared.borrow_mut().window_size = cur_window_size;
         }
+
+            stepped = true;
+
+            self.video.pre_draw();
+
+            // Draw objects in world collection
+            for body_ref in self.system_state_manager.bodies() {
+                self.video.draw_body(body_ref);
+            }
+
+            // Update physics
+            self.engine.step(self.system_state_manager.bodies(), self.delta);
+
+            // Apply changes
+            self.video.canvas.present();
+        }
+
+        thread::sleep(Duration::from_millis(1000/self.fps));
     }
 
     /* --------------------- GETTERS -------------------- */

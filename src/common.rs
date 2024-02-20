@@ -58,16 +58,24 @@ impl<T: Copy + Num + AsPrimitive<f64> + AsPrimitive<Disp>> Vector2<T> {
         let v: Vector2<f64> = self.to();
         let n = self.mag();
 
-        Vector2 {
-            x: v.x / n,
-            y: v.y / n,
+        if !n.is_nan() && n != 0.0 {
+            Vector2 {
+                x: v.x / n,
+                y: v.y / n,
+            }
+        } else {
+            Vector2::from(0.0)
         }
+
     }
     pub fn disp(self) -> Vector2<Disp> {
         self.to()
     }
     pub fn dot(v1: Vector2<T>, v2: Vector2<T>) -> T {
         return (v1.x * v2.x) + (v1.y * v2.y);
+    }
+    pub fn cross(v1: Vector2<T>, v2: Vector2<T>) -> T {
+        return (v1.x * v2.y) - (v1.y * v2.x)
     }
     pub fn project(v1: Vector2<T>, v2: Vector2<T>) -> Vector2<f64> {
         let v1: Vector2<f64> = v1.to();

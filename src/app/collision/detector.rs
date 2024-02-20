@@ -107,7 +107,10 @@ impl CollisionDetector {
                 // Ensure no duplicates
                 if cell[a] == cell[b]
                     || pairs.contains(&[cell[a].clone(), cell[b].clone()])
-                    || pairs.contains(&[cell[b].clone(), cell[a].clone()]) { continue; }
+                    || pairs.contains(&[cell[b].clone(), cell[a].clone()])
+                    || cell[a].borrow().ignore_groups.contains(&cell[b].borrow().collision_group)
+                    || cell[b].borrow().ignore_groups.contains(&cell[a].borrow().collision_group)
+                { continue; }
 
                 pairs.push([cell[a].clone(), cell[b].clone()]);
             }}
@@ -117,7 +120,10 @@ impl CollisionDetector {
         for a in 0..self.out_of_bounds.len() { for b in 1..self.out_of_bounds.len() {
             if self.out_of_bounds[a] == self.out_of_bounds[b]
                 || pairs.contains(&[self.out_of_bounds[a].clone(), self.out_of_bounds[b].clone()])
-                || pairs.contains(&[self.out_of_bounds[b].clone(), self.out_of_bounds[a].clone()]) { continue; }
+                || pairs.contains(&[self.out_of_bounds[b].clone(), self.out_of_bounds[a].clone()])
+                || self.out_of_bounds[a].borrow().ignore_groups.contains(&self.out_of_bounds[b].borrow().collision_group)
+                || self.out_of_bounds[b].borrow().ignore_groups.contains(&self.out_of_bounds[a].borrow().collision_group)
+            { continue; }
 
             pairs.push([self.out_of_bounds[a].clone(), self.out_of_bounds[b].clone()]);
         }}

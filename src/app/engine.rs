@@ -28,14 +28,14 @@ impl Engine {
     pub fn new(shared: TSharedRef) -> Self {
         Engine {
             shared: shared.clone(),
-            gravity: v2!(0f64, 1f64, 0.001),
+            gravity: v2!(0f64, 1f64, 9.8),
             detector: CollisionDetector::new(shared.clone()),
             resolver: CollisionResolver::new(shared.clone()),
 
         }
     }
 
-    pub fn step(&mut self, bodies: &Vec<TBodyRef>, delta: u64) {
+    pub fn step(&mut self, bodies: &Vec<TBodyRef>, dt: f64) {
         // Resolve gravity
         for body_ref in bodies {
             self.resolve_gravity(body_ref);
@@ -44,7 +44,7 @@ impl Engine {
         // Update body position/rotation
         for body_ref in bodies {
             let mut body = body_ref.borrow_mut();
-            body.update(delta);
+            body.update(dt);
         }
 
         // TODO: Resolve constraints
@@ -61,8 +61,8 @@ impl Engine {
             return;
         }
 
-        let gravity = self.gravity.to_vec2() * Vector2::from(self.gravity.m);
-        body.velocity = body.velocity + gravity * body.mass;
+        let gravity = self.gravity.to_vec2() * self.gravity.m;
+        body.force_buffer = body.force_buffer + gravity / body.mass;
     }
 }
 

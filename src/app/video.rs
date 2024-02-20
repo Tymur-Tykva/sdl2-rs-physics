@@ -66,9 +66,9 @@ impl<'a> Video {
             canvas,
             // window,
 
-            aabb: true,
+            aabb: false,
             grid: false,
-            points: true,
+            points: false,
             wireframe: false,
             collision_indicator: false,
         }

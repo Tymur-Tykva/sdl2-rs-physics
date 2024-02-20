@@ -22,8 +22,7 @@ pub struct Body {
     // Internal
     pub form: BodyForm,
     pub position: Vector2<Crd>,
-    pub prev_position: Vector2<Crd>,
-    pub rotation: i64,
+    pub rotation: f64,
     pub origin: Vector2<Crd>,
     pub radius: Option<f64>,
     // BodyForm::Polygon
@@ -37,11 +36,17 @@ pub struct Body {
     pub mass: f64, // Mass of the object, exerted at it's center of mass
     pub velocity: Vector2<f64>,
     pub restitution: f64,
-    pub initial_friction: f64,
-    pub continuous_friction: f64,
-    pub angular_velocity: i32,
+    // pub initial_friction: f64,
+    // pub continuous_friction: f64,
+    pub angular_velocity: f64,
+    pub torque: f64,
     pub air_friction: f64,
-    pub force_buffer: Vector2<f64>, // Forces applied onto the body, pre Body::update()
+    // Forces applied onto the body, pre Body::update()
+    pub force_buffer: Vector2<f64>,
+    pub inertia_buffer: f64,
+    // Meta
+    pub collision_group: i32,
+    pub ignore_groups: Vec<i32>,
 }
 
 
@@ -86,8 +91,7 @@ impl Body {
             // Internal
             form,
             position: position.to(),
-            prev_position: position.clone().to(),
-            rotation: 0,
+            rotation: 0.0,
             origin,
             radius,
             // BodyForm::Polygon
@@ -99,25 +103,34 @@ impl Body {
             mass,
             center,
             restitution,
-            initial_friction: 0.9,
-            continuous_friction: 0.7,
+            // initial_friction: 0.9,
+            // continuous_friction: 0.7,
             frozen: false,
-            velocity: v2!(0f64, 0f64),
-            angular_velocity: 0,
+            velocity: v2!(0.0),
+            angular_velocity: 0.0,
+            torque: 0.0,
             air_friction: 0.01,
-            force_buffer: v2!(0f64, 0f64),
+            force_buffer: v2!(0.0),
+            inertia_buffer: 0.0,
+            // Meta
+            collision_group: 0,
+            ignore_groups: vec![],
         }
     }
 
     /// Physics update for the body. Called every frame.
-    pub fn update(&mut self, delta: u64) {
+    pub fn update(&mut self, dt: f64) {
         if self.frozen { return; }
 
-        let delta = delta as f64;
         let inv_mass = 1.0 / self.mass;
+        let inv_inertia = if self.inertia_buffer != 0.0 { 1.0 / self.inertia_buffer } else { 0.0 };
+        // let inv_inertia = 1.0;
 
-        self.velocity = self.velocity + (self.force_buffer * inv_mass) * delta;
-        self.position = self.position + self.velocity * delta;
+        self.velocity = self.velocity + self.force_buffer * inv_mass * dt;
+        self.angular_velocity = self.angular_velocity + self.torque * inv_inertia * dt;
+
+        self.position = self.position + self.velocity * dt;
+        self.rotation = self.rotation + self.angular_velocity * dt;
     }
 
     /// Evaluates whether the given Body object is a rect-like.
@@ -211,49 +224,23 @@ impl Body {
     }
 
     /* --------------------- GETTERS -------------------- */
-    // pub fn position(&self) -> Vector2<Crd>  {
-    //     self.position
-    // }
-    // pub fn radius(&self) -> Option<f64>  {
-    //     self.radius
-    // }
-    // pub fn vertices(&self) -> &Vec<Vertex> {
-    //     &self.vertices
-    // }
-    // pub fn origin(&self) -> Vector2<Crd> {
-    //     self.origin
-    // }
-    // pub fn sides(&self) ->u32 {
-    //     self.sides
-    // }
-    // pub fn frozen(&self) -> bool {
-    //     self.frozen
-    // }
-    // pub fn force_buffer(&self) -> Vector2<f64> {
-    //     self.force_buffer
-    // }
-    // pub fn restitution(&self) -> f64 {
-    //     self.restitution
-    // }
-    // pub fn mass(&self) -> u32 {
-    //     self.mass
-    // }
-    pub fn indent(&self) -> () {
+    pub fn ident(&self) -> () {
         println!("- sides={:?}\n- w={:?}", self.sides, self.width.unwrap_or(0));
     }
     /* --------------------- SETTERS -------------------- */
-    // pub fn set_frozen(&mut self, frozen: bool) { self.frozen = frozen }
-    // pub fn set_position(&mut self, position: Vector2<Crd>) {
-    //     self.position = position;
-    // }
-    // pub fn set_force_buffer(&mut self, force_buffer: Vector2<f64>) {
-    //     self.force_buffer = force_buffer;
-    // }
     pub fn clear_force_buffer(&mut self) {
         self.force_buffer = v2!(0f64, 0f64);
     }
     pub fn set_frozen(mut self, frozen: bool) -> Self {
         self.frozen = frozen;
+        self
+    }
+    pub fn set_collision_group(mut self, group: i32) -> Self {
+        self.collision_group = group;
+        self
+    }
+    pub fn set_ignore_groups(mut self, groups: Vec<i32>) -> Self {
+        self.ignore_groups = groups;
         self
     }
 }
