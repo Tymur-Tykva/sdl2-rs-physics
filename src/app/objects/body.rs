@@ -24,6 +24,7 @@ pub struct Body {
     pub position: Vector2<Crd>,
     pub rotation: f64,
     pub origin: Vector2<Crd>,
+    pub center: Vector2<f64>,
     pub radius: Option<f64>,
     // BodyForm::Polygon
     pub sides: u32,
@@ -31,9 +32,9 @@ pub struct Body {
     pub width: Option<u32>,
     pub height: Option<u32>,
     // Physics
-    pub center: Vector2<f64>, // Center of mass; measured radius as f64 from origin
-    pub frozen: bool, // Whether the body's forces shouldn't be updated at the physics step
     pub mass: f64, // Mass of the object, exerted at it's center of mass
+    pub inertia: f64,
+    pub frozen: bool, // Whether the body's forces shouldn't be updated at the physics step
     pub velocity: Vector2<f64>,
     pub restitution: f64,
     // pub initial_friction: f64,
@@ -41,9 +42,7 @@ pub struct Body {
     pub angular_velocity: f64,
     pub torque: f64,
     pub air_friction: f64,
-    // Forces applied onto the body, pre Body::update()
-    pub force_buffer: Vector2<f64>,
-    pub inertia_buffer: f64,
+    pub force_buffer: Vector2<f64>, // Forces applied onto the body, pre Body::update()
     // Meta
     pub collision_group: i32,
     pub ignore_groups: Vec<i32>,
@@ -101,6 +100,7 @@ impl Body {
             height,
             // Physics
             mass,
+            inertia: 1.0 * (mass / 6.0),
             center,
             restitution,
             // initial_friction: 0.9,
@@ -111,7 +111,6 @@ impl Body {
             torque: 0.0,
             air_friction: 0.01,
             force_buffer: v2!(0.0),
-            inertia_buffer: 0.0,
             // Meta
             collision_group: 0,
             ignore_groups: vec![],
@@ -123,7 +122,7 @@ impl Body {
         if self.frozen { return; }
 
         let inv_mass = 1.0 / self.mass;
-        let inv_inertia = if self.inertia_buffer != 0.0 { 1.0 / self.inertia_buffer } else { 0.0 };
+        let inv_inertia = if self.inertia != 0.0 { 1.0 / self.inertia } else { 0.0 };
         // let inv_inertia = 1.0;
 
         self.velocity = self.velocity + self.force_buffer * inv_mass * dt;
@@ -178,8 +177,13 @@ impl Body {
     }
 
     /// Convert local Vector2 (vector about the object's origin) into global space
-    pub fn globalise(&self, vec: Vector2<Crd>) -> Vector2<Crd> {
-        self.origin + self.position + vec.to()
+    pub fn globalise(&self, v: Vector2<Crd>) -> Vector2<Crd> {
+        let rotated = v2!(
+            v.x * self.rotation.cos() - v.y * self.rotation.sin(),
+            v.x * self.rotation.sin() + v.y * self.rotation.cos()
+        );
+
+        self.origin + self.position + rotated.to()
     }
 
     /// Returns the axis-aligned bounding box of the object.
@@ -212,7 +216,7 @@ impl Body {
             let p2 = self.vertices[if i + 1 == self.sides as usize { 0 } else { i + 1 }].to_vec2();
 
             let edge = p2 - p1;
-            let normal = v2!(-edge.y, edge.x).norm();
+            let normal = v2!(-edge.y, edge.x);
 
             // println!("Axis={:?}", normal);
             // println!("Norm={:?}", normal.norm());
@@ -241,6 +245,10 @@ impl Body {
     }
     pub fn set_ignore_groups(mut self, groups: Vec<i32>) -> Self {
         self.ignore_groups = groups;
+        self
+    }
+    pub fn set_rotation(mut self, rotation: f64) -> Self {
+        self.rotation = rotation;
         self
     }
 }

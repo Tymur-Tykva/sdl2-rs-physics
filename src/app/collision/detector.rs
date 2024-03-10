@@ -7,9 +7,10 @@
     * Narrow phase uses SAT (Separating Axis Theorem)
  */
 /* --------------------- IMPORTS -------------------- */
+use std::collections::HashMap;
 // Crates
 use crate::app::objects::Body;
-use crate::common::{ConvertPrimitives, Disp, GRID_SIZE, TBodyRef, TCollisionPairs, TCollisionGrid, TSharedRef, Vector2, Crd, CollisionResult};
+use crate::common::{ConvertPrimitives, Disp, GRID_SIZE, TBodyRef, TCollisionPairs, TCollisionGrid, TSharedRef, Vector2, Crd, CollisionResult, Projection, Axis};
 use crate::v2;
 
 /* -------------------- VARIABLES ------------------- */
@@ -145,30 +146,41 @@ impl CollisionDetector {
             let mut colliding = true;
             let mut min_overlap: f64 = -1.0;
             let mut min_axis: Vector2<f64> = v2!(-1.0);
+            let mut min_point: Vector2<f64> = v2!(0.0);
 
             // Get all non-duplicate axes
-            let mut axes = body1.axes();
+            let mut axes: Vec<Axis> = body1.axes().iter().map(|&ax| Axis { v2: ax, parent: pair[0].clone() }).collect();
             for axis in body2.axes() {
-                if axes.contains(&axis) { continue; }
-                axes.push(axis)
+                let ax = Axis { v2: axis, parent: pair[1].clone() };
+                if axes.contains(&ax) { continue; }
+                axes.push(ax);
             }
 
             // Check whether points overlap in axis projection
             for axis in axes {
-                let b1 = self.projection_bounds(&body1, axis);
-                let b2 = self.projection_bounds(&body2, axis);
+                let ax = axis.v2;
+                let mut proj_1 = self.projection_bounds(&body1, ax.norm());
+                let mut proj_2 = self.projection_bounds(&body2, ax.norm());
+                let mut swapped = true;
+
+                // Swap to b1 & b2 to ensure b2 always 'rightmost'
+                if proj_2.max < proj_1.max {
+                    (proj_1, proj_2) = (proj_2, proj_1);
+                    swapped = true;
+                }
 
                 // Check if they are colliding
-                if b1.1 < b2.0 || b2.1 < b1.0 {
+                if proj_1.max < proj_2.min {
                     colliding = false;
                     break;
                 } else {
                     // Update minimum overlap
-                    let overlap = if b1.1 - b2.0 <= b2.1 - b1.0 { b1.1 - b2.0 } else { b2.1 - b1.0 };
+                    let overlap = proj_1.max - proj_2.min;
 
                     if min_overlap == -1.0 || overlap < min_overlap {
                         min_overlap = overlap;
-                        min_axis = axis;
+                        min_axis = ax.norm();
+                        min_point = if swapped { proj_1.p_max } else { proj_2.p_max };
                     }
                 }
             }
@@ -178,6 +190,7 @@ impl CollisionDetector {
                     bodies: pair.clone(),
                     normal: min_axis,
                     overlap: min_overlap,
+                    point: min_point,
                 };
 
                 colliding_pairs.push(colliding_pair);
@@ -191,12 +204,14 @@ impl CollisionDetector {
     }
 
     /// Find the min/max points of body projected onto a given axis
-    fn projection_bounds(&self, body: &Body, axis: Vector2<f64>) -> (f64, f64) {
+    fn projection_bounds(&self, body: &Body, axis: Vector2<f64>) -> Projection {
         let vertices: Vec<Vector2<f64>> = body.vertices.clone().iter().map(|vtx| body.globalise(vtx.to_vec2()).to()).collect();
 
         let proj = Vector2::dot(vertices[0], axis);
         let mut max: f64 = proj;
+        let mut p_max: Vector2<f64> = vertices[0];
         let mut min: f64 = proj;
+        let mut p_min: Vector2<f64> = vertices[0];
 
         // Get bounds over polygon`
         for i in 1..body.sides as usize {
@@ -204,12 +219,15 @@ impl CollisionDetector {
 
             if proj < min {
                 min = proj;
+                p_min = vertices[i];
             } else if proj > max {
                 max = proj;
+                p_max = vertices[i];
             }
         }
 
-        (min, max)
+        // println!("{min}, {max} | {:?}, {:?}", p_min, p_max);
+        Projection {min, max, p_min, p_max}
     }
 }
 

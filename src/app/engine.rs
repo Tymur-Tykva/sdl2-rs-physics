@@ -28,7 +28,7 @@ impl Engine {
     pub fn new(shared: TSharedRef) -> Self {
         Engine {
             shared: shared.clone(),
-            gravity: v2!(0f64, 1f64, 9.8),
+            gravity: v2!(0f64, 1f64, 4.5),
             detector: CollisionDetector::new(shared.clone()),
             resolver: CollisionResolver::new(shared.clone()),
 

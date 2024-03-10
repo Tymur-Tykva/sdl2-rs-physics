@@ -187,6 +187,12 @@ impl Vertex {
     }
 }
 
+#[derive(PartialEq, Debug, Clone)]
+pub struct Axis {
+    pub v2: Vector2<f64>,
+    pub parent: TBodyRef,
+}
+
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum BodyForm {
     Polygon,
@@ -198,11 +204,19 @@ pub struct AABB {
     pub points: Vec<Vector2<Crd>>,
 }
 
+pub struct Projection {
+    pub min: f64,
+    pub max: f64,
+    pub p_min: Vector2<f64>,
+    pub p_max: Vector2<f64>,
+}
+
 #[derive(Debug, Clone)]
 pub struct CollisionResult {
     pub bodies: [TBodyRef; 2],
     pub normal: Vector2<f64>,
     pub overlap: f64,
+    pub point: Vector2<f64>, // The collision point is an estimate, 1/2 way on collision normal
 }
 
 /* --------------------- MACROS --------------------- */

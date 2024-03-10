@@ -70,7 +70,7 @@ impl<'a> Video {
             grid: false,
             points: false,
             wireframe: false,
-            collision_indicator: false,
+            collision_indicator: true,
         }
     }
 
@@ -217,6 +217,9 @@ impl<'a> Video {
                 let b2 = pair.bodies[1].borrow_mut();
 
                 self.line(b1.globalise(v2!(0.0)).disp(), b2.globalise(v2!(0.0)).disp(), Color::RED);
+
+                let point = pair.point.to();
+                self.point(point, Color::CYAN);
             }
         }
     }

@@ -9,6 +9,7 @@
 // Modules
 pub mod app;
 pub mod common;
+
 // Crates
 use crate::common::{BodyForm, Vector2};
 use crate::app::{App, objects::Body};
