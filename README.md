@@ -8,4 +8,15 @@ My language of choice for this project is Rust, and graphics library used is SDL
 # Photos
 <h4 align="center">Note: Images are placeholders, until the rendering component is updated</h4>
 
+<div align="center">
+  <img src="https://github.com/Tymur-Tykva/sdl2-rs-physics/raw/master/images/collision-detection-1.png" width="75%" align="center"></img>
+  <p>Collision detection test; no broad-phase nor narrow-phase flag.</p>
+  <br/>
 
+  <img src="https://github.com/Tymur-Tykva/sdl2-rs-physics/raw/master/images/collision-detection-2.png" width="75%" align="center"></img>
+  <p>Collision detection test; broad-phase flag.</p>
+  <br/>
+
+  <img src="https://github.com/Tymur-Tykva/sdl2-rs-physics/raw/master/images/collision-detection-3.png" width="75%" align="center"></img>
+  <p>Collision detection test; narrow-phase flag.</p>
+</div>
