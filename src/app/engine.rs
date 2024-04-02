@@ -12,6 +12,7 @@ use crate::common::{TBodyRef, TSharedRef, Vector2, Vector2M};
 use crate::v2;
 
 /* -------------------- VARIABLES ------------------- */
+const ITERATIONS: u32 = 1;
 
 
 /* ------------------- STRUCTURES ------------------- */
@@ -28,7 +29,7 @@ impl Engine {
     pub fn new(shared: TSharedRef) -> Self {
         Engine {
             shared: shared.clone(),
-            gravity: v2!(0f64, 1f64, 4.5),
+            gravity: v2!(0f64, 1f64, 9.8),
             detector: CollisionDetector::new(shared.clone()),
             resolver: CollisionResolver::new(shared.clone()),
 
@@ -36,22 +37,25 @@ impl Engine {
     }
 
     pub fn step(&mut self, bodies: &Vec<TBodyRef>, dt: f64) {
-        // Resolve gravity
-        for body_ref in bodies {
-            self.resolve_gravity(body_ref);
+        let dt = dt / (ITERATIONS as f64);
+
+        for _ in 0..ITERATIONS {
+            // Resolve gravity
+            for body_ref in bodies {
+                self.resolve_gravity(body_ref);
+            }
+
+            // Update body position/rotation
+            for body_ref in bodies {
+                let mut body = body_ref.borrow_mut();
+                body.update(dt);
+            }
+
+            // TODO: Resolve constraints
+
+            let result = self.detector.evaluate(bodies);
+            self.resolver.resolve(result);
         }
-
-        // Update body position/rotation
-        for body_ref in bodies {
-            let mut body = body_ref.borrow_mut();
-            body.update(dt);
-        }
-
-        // TODO: Resolve constraints
-
-        // TODO: Resolve collisions
-        let result = self.detector.evaluate(bodies);
-        self.resolver.resolve(result);
     }
 
     fn resolve_gravity(&self, body: &TBodyRef) {
@@ -62,7 +66,7 @@ impl Engine {
         }
 
         let gravity = self.gravity.to_vec2() * self.gravity.m;
-        body.force_buffer = body.force_buffer + gravity / body.mass;
+        body.velocity = body.velocity + gravity / (ITERATIONS as f64);
     }
 }
 

@@ -138,7 +138,7 @@ impl App {
             self.video.canvas.present();
 
             thread::sleep(Duration::from_millis(1000/(self.fps)));
-            // thread::sleep(Duration::from_millis(200));
+            // thread::sleep(Duration::from_millis(100));
         }
     }
 

@@ -70,7 +70,7 @@ impl<'a> Video {
             grid: false,
             points: false,
             wireframe: false,
-            collision_indicator: true,
+            collision_indicator: false,
         }
     }
 
@@ -220,6 +220,9 @@ impl<'a> Video {
 
                 let point = pair.point.to();
                 self.point(point, Color::CYAN);
+
+                self.point(b1.center().to(), Color::YELLOW);
+                self.point(b2.center().to(), Color::YELLOW);
             }
         }
     }

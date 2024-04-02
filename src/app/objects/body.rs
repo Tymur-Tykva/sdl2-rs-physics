@@ -24,7 +24,7 @@ pub struct Body {
     pub position: Vector2<Crd>,
     pub rotation: f64,
     pub origin: Vector2<Crd>,
-    pub center: Vector2<f64>,
+    // pub center: Vector2<f64>,
     pub radius: Option<f64>,
     // BodyForm::Polygon
     pub sides: u32,
@@ -42,7 +42,7 @@ pub struct Body {
     pub angular_velocity: f64,
     pub torque: f64,
     pub air_friction: f64,
-    pub force_buffer: Vector2<f64>, // Forces applied onto the body, pre Body::update()
+    pub force_buffer: Vector2<f64>,
     // Meta
     pub collision_group: i32,
     pub ignore_groups: Vec<i32>,
@@ -58,8 +58,9 @@ impl Body {
         mass: f64, restitution: f64,                                  // Physics properties
     ) -> Self {
         let origin: Vector2<Crd>;
-        let center: Vector2<f64>;
+        // let center: Vector2<f64>;
         let vertices: Vec<Vertex>;
+        let inertia: f64;
 
         // If the body is a rect-like
         if sides == 4 && width.is_some() && height.is_some() {
@@ -67,7 +68,7 @@ impl Body {
             let height = height.unwrap_or(1) as Crd;
 
             origin = v2!(0).to();
-            center = v2!(width/2.0, height/2.0).to();
+            inertia = (1.0 / 12.0) * mass * (width * width + height * height);
 
             // Manually define initial vertex positions
             vertices = vec![
@@ -80,7 +81,7 @@ impl Body {
         } else {
             let radius = radius.unwrap_or(1f64);
             origin = Vector2::from(radius).to();
-            center = Vector2::from(radius).to();
+            inertia = (1.0 / 2.0) * mass * radius * radius;
 
             // Call vertex calculation
             vertices = Body::calculate_vertices(sides, radius);
@@ -100,8 +101,8 @@ impl Body {
             height,
             // Physics
             mass,
-            inertia: 1.0 * (mass / 6.0),
-            center,
+            inertia,
+            // center,
             restitution,
             // initial_friction: 0.9,
             // continuous_friction: 0.7,
@@ -121,12 +122,8 @@ impl Body {
     pub fn update(&mut self, dt: f64) {
         if self.frozen { return; }
 
-        let inv_mass = 1.0 / self.mass;
-        let inv_inertia = if self.inertia != 0.0 { 1.0 / self.inertia } else { 0.0 };
-        // let inv_inertia = 1.0;
-
-        self.velocity = self.velocity + self.force_buffer * inv_mass * dt;
-        self.angular_velocity = self.angular_velocity + self.torque * inv_inertia * dt;
+        self.velocity = self.velocity + self.force_buffer * self.inv_mass() * dt;
+        self.angular_velocity = self.angular_velocity + self.torque * self.inv_inertia() * dt;
 
         self.position = self.position + self.velocity * dt;
         self.rotation = self.rotation + self.angular_velocity * dt;
@@ -231,10 +228,18 @@ impl Body {
     pub fn ident(&self) -> () {
         println!("- sides={:?}\n- w={:?}", self.sides, self.width.unwrap_or(0));
     }
-    /* --------------------- SETTERS -------------------- */
-    pub fn clear_force_buffer(&mut self) {
-        self.force_buffer = v2!(0f64, 0f64);
+    pub fn center(&self) -> Vector2<f64> {
+        let m: Vector2<f64> = if self.is_rect() { v2!(self.width.unwrap_or(1) / 2, self.height.unwrap_or(1) / 2).to() } else { v2!(self.radius.unwrap_or(1.0)) };
+        return self.position + m
     }
+    pub fn inv_mass(&self) -> f64 {
+        return if self.frozen { 0.0 } else { 1.0 / self.mass }
+    }
+    pub fn inv_inertia(&self) -> f64 {
+        return if self.frozen { 0.0 } else { 1.0 / self.inertia }
+    }
+
+    /* --------------------- SETTERS -------------------- */
     pub fn set_frozen(mut self, frozen: bool) -> Self {
         self.frozen = frozen;
         self
