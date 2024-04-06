@@ -124,21 +124,27 @@ impl App {
 
             stepped = true;
 
+            // Update physics
+            self.engine.step(self.system_state_manager.bodies(), self.delta);
+
             self.video.pre_draw();
 
             // Draw objects in world collection
             for body_ref in self.system_state_manager.bodies() {
+                // println!("i={:?}, s={:?}", body_ref.borrow().inertia.clone(), body_ref.borrow().sides.clone());
+
                 self.video.draw_body(body_ref);
             }
-
-            // Update physics
-            self.engine.step(self.system_state_manager.bodies(), self.delta);
 
             // Apply changes
             self.video.canvas.present();
 
-            thread::sleep(Duration::from_millis(1000/(self.fps)));
-            // thread::sleep(Duration::from_millis(100));
+            // if self.shared.borrow().narrow_phase_pairs.len() > 0 {
+            //     thread::sleep(Duration::from_secs(1));
+            // }
+
+            thread::sleep(Duration::from_millis(1000/self.fps));
+            // thread::sleep(Duration::from_millis(1000));
         }
     }
 

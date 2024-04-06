@@ -31,14 +31,13 @@ impl CollisionResolver {
 
     pub fn resolve(&self, collisions: Vec<CollisionResult>) {
         for result in collisions {
+            // println!("=======");
+
             // Deconstruct collision pair info
             let mut b1 = result.bodies[0].borrow_mut();
             let mut b2 = result.bodies[1].borrow_mut();
             let overlap = result.overlap;
             let n = result.normal;
-
-            println!("b1.g={:?}", b1.velocity);
-            println!("b2.g={:?}", b2.velocity);
 
             // Evaluate the bodies' positions
             if Vector2::dot(b1.globalise(v2!(0.0)), n) >= Vector2::dot(b2.globalise(v2!(0.0)), n) {
@@ -55,9 +54,10 @@ impl CollisionResolver {
 
             // Pre-resolution setup
             let rel_v = (b2.velocity + r_2p * b2.angular_velocity) - (b1.velocity + r_1p * b1.angular_velocity);
+            println!("rv={:?}", rel_v);
             let v_n = Vector2::dot(rel_v, n);
             // Tangent vector
-            let mut t = rel_v - n * Vector2::dot(rel_v, n); // Calculate tangent vector
+            let t = (rel_v - n * Vector2::dot(rel_v, n)).norm(); // Calculate tangent vector
             let v_t = Vector2::dot(rel_v, t);
 
             // Skip resolution if bodies moving apart
@@ -69,50 +69,42 @@ impl CollisionResolver {
             let r_1pn = Vector2::dot(r_1p, n);
             let r_2pn = Vector2::dot(r_2p, n);
 
-            // println!("r_1={:?}", (r_1pd * r_1pd) * b1.inv_inertia());
-
             let j = (v_n * -(e + 1.0)) /
-                (b1.inv_mass() + b1.inv_mass()     +
+                (b1.inv_mass() + b2.inv_mass()
+                    +
                 (r_1pn * r_1pn) * b1.inv_inertia() +
-                (r_2pn * r_2pn) * b2.inv_inertia() );
-            let mut impulse = n * j;
+                (r_2pn * r_2pn) * b2.inv_inertia()
+                );
+            let impulse = n * j;
 
             // Find friction
-            let mut f_impulse;
-
-            t = t.norm();
-
             let ks = 0.12;  // Static frictional coefficient
-            let kd = 0.08; // Dynamic frictional coefficient
+            let kd = 0.04; // Dynamic frictional coefficient
 
             let r_1pt = Vector2::dot(r_1p, t);
             let r_2pt = Vector2::dot(r_2p, t);
 
-            let f_j =  (v_t * -(e + 1.0)) /
-                (b1.inv_mass() + b1.inv_mass()     +
-                    (r_1pt * r_1pt) * b1.inv_inertia() +
-                    (r_2pt * r_2pt) * b2.inv_inertia() );
+            let f_j = -v_t /
+                (b1.inv_mass() + b2.inv_mass()
+                    +
+                (r_1pt * r_1pt) * b1.inv_inertia() +
+                (r_2pt * r_2pt) * b2.inv_inertia()
+                );
+
+            // println!("j={j}, f_j={f_j}, ksj={}", ks * j);
 
             // If the frictional force below mew*R, apply it
-            if f_j.abs() < ks * j {
-                println!("Static");
+            let f_impulse;
+            if f_j.abs() <= ks * j {
                 f_impulse = t * f_j;
-                // Else, the body is already in motion, and you should use
             } else {
-                println!("Dynamic");
                 f_impulse = t * -j * kd;
             }
 
             // Calculate positional correction
-            let mut correction = n * (if overlap - SLOP > 0.0 { overlap - SLOP } else { 0.0 }) * CORRECTION_PERCENTAGE;
+            let correction = n * overlap * (if b1.frozen || b2.frozen { 1.0 } else { 0.5 }) * CORRECTION_PERCENTAGE;
 
-            // Account for a frozen body not separating
-            if b1.frozen || b2.frozen {
-                impulse = impulse * 2.0;
-                f_impulse = f_impulse * 2.0;
-                correction = correction * 2.0;
-            }
-
+            // println!("imp={:?}\nf_imp={:?}", impulse, f_impulse);
             // Apply impulse resolution & positional correction
             if !b1.frozen {
                 b1.position = b1.position - correction * b1.inv_mass();
@@ -120,8 +112,8 @@ impl CollisionResolver {
                 b1.angular_velocity = b1.angular_velocity - (Vector2::cross(r_1, impulse) + Vector2::cross(r_1, f_impulse)) * b1.inv_inertia();
             }
             if !b2.frozen {
-                b2.position = b2.position + correction * b1.inv_mass();
-                b2.velocity = b2.velocity + (impulse + f_impulse) * b1.inv_mass();
+                b2.position = b2.position + correction * b2.inv_mass();
+                b2.velocity = b2.velocity + (impulse + f_impulse) * b2.inv_mass();
                 b2.angular_velocity = b2.angular_velocity + (Vector2::cross(r_2, impulse) + Vector2::cross(r_2, f_impulse)) * b2.inv_inertia();
             }
 

@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 // Crates
 use crate::app::objects::Body;
-use crate::common::{ConvertPrimitives, Disp, GRID_SIZE, TBodyRef, TCollisionPairs, TCollisionGrid, TSharedRef, Vector2, Crd, CollisionResult, Projection, Axis};
+use crate::common::{ConvertPrimitives, Disp, GRID_SIZE, TBodyRef, TCollisionPairs, TCollisionGrid, TSharedRef, Vector2, Crd, CollisionResult, Projection, Axis, Vertex, almost_eq};
 use crate::v2;
 
 /* -------------------- VARIABLES ------------------- */
@@ -186,6 +186,10 @@ impl CollisionDetector {
             }
 
             if colliding {
+                let contacts = self.find_contacts(&body1, &body2);
+
+                dbg!(&contacts);
+
                 let colliding_pair = CollisionResult {
                     bodies: pair.clone(),
                     normal: min_axis,
@@ -228,6 +232,67 @@ impl CollisionDetector {
 
         // println!("{min}, {max} | {:?}, {:?}", p_min, p_max);
         Projection {min, max, p_min, p_max}
+    }
+
+    /// Find collision contact points
+    fn find_contacts(&self, b1: &Body, b2: &Body) -> Vec<Vector2<f64>> {
+        let v1: Vec<Vector2<f64>> = b1.vertices.clone().iter().map(|v| b1.globalise(v.to_vec2()).to()).collect();
+        let v2: Vec<Vector2<f64>> = b2.vertices.clone().iter().map(|v| b2.globalise(v.to_vec2()).to()).collect();
+
+        let mut contacts: Vec<Vector2<f64>> = vec![v2!(0.0)];
+        let mut min_dist: f64 = 9f64.powi(10);
+
+        for i in 0..v1.len() {
+            let p = v1[i];
+
+            for j in 0..v2.len() {
+                let l1 = v2[j];
+                let l2 = v2[if j + 1 == v2.len() { 0 } else { j + 1 }];
+
+                let (d, contact) = Vector2::<f64>::p_dist(p, l1, l2);
+
+                if almost_eq(d, min_dist) {
+                    if contacts.len() == 2 && !(
+                        Vector2::<f64>::almost_eq(contact, contacts[0]) &&
+                        Vector2::<f64>::almost_eq(contact, contacts[1])
+                    ) {
+                       contacts[1] == contact;
+                    } else if contacts.len() == 1 && Vector2::<f64>::almost_eq(contact, contacts[0]) {
+                        contacts.push(contact);
+                    }
+                } else if d < min_dist {
+                    min_dist = d;
+                    contacts[0] = contact;
+                }
+            }
+        }
+
+        for i in 0..v2.len() {
+            let p = v2[i];
+
+            for j in 0..v2.len() {
+                let l1 = v1[j];
+                let l2 = v1[if j + 1 == v1.len() { 0 } else { j + 1 }];
+
+                let (d, contact) = Vector2::<f64>::p_dist(p, l1, l2);
+
+                if almost_eq(d, min_dist) {
+                    if contacts.len() == 2 && !(
+                        Vector2::<f64>::almost_eq(contact, contacts[0]) &&
+                            Vector2::<f64>::almost_eq(contact, contacts[1])
+                    ) {
+                        contacts[1] == contact;
+                    } else if contacts.len() == 1 && Vector2::<f64>::almost_eq(contact, contacts[0]) {
+                        contacts.push(contact);
+                    }
+                } else if d < min_dist {
+                    min_dist = d;
+                    contacts[0] = contact;
+                }
+            }
+        }
+
+        contacts
     }
 }
 

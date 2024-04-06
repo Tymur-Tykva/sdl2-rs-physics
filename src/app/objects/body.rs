@@ -81,11 +81,14 @@ impl Body {
         } else {
             let radius = radius.unwrap_or(1f64);
             origin = Vector2::from(radius).to();
-            inertia = (1.0 / 2.0) * mass * radius * radius;
 
             // Call vertex calculation
             vertices = Body::calculate_vertices(sides, radius);
+
+            inertia = Self::calculate_inertia(vertices.clone(), mass);
         }
+
+        println!("inertia={inertia}, s={sides}");
 
         Body {
             // Internal
@@ -122,11 +125,15 @@ impl Body {
     pub fn update(&mut self, dt: f64) {
         if self.frozen { return; }
 
-        self.velocity = self.velocity + self.force_buffer * self.inv_mass() * dt;
+        self.velocity = self.velocity + self.force_buffer * dt;
         self.angular_velocity = self.angular_velocity + self.torque * self.inv_inertia() * dt;
 
         self.position = self.position + self.velocity * dt;
         self.rotation = self.rotation + self.angular_velocity * dt;
+
+        // println!("rotation={}", self.rotation);
+        self.force_buffer = v2!(0.0);
+        self.torque = 0.0;
     }
 
     /// Evaluates whether the given Body object is a rect-like.
@@ -171,6 +178,35 @@ impl Body {
 
         vertices.sort_by(|&a, &b| (a.id).cmp(&b.id));
         vertices
+    }
+
+    /// Internal method used for calculating the moment of inertia (mmoi) of a non-rect polygon
+    fn calculate_inertia(vertices: Vec<Vertex>, mass: f64) -> f64 {
+        let mut center: Vector2<f64> = v2!(0.0);
+        let mut area: f64 = 0.0;
+        let mut mmoi: f64 = 0.0;
+
+        let mut prev: usize = vertices.len() - 1;
+        for i in 0..vertices.len() {
+            let a = vertices[prev].to_vec2();
+            let b = vertices[i].to_vec2();
+
+            let center_s = (a + b) / 3.0;
+            let area_s = Vector2::cross(a, b) / 2.0;
+            let mmoi_s = area_s * (Vector2::dot(a, a) + Vector2::dot(a, b) + Vector2::dot(b, b)) / 6.0;
+
+            center = (center * area + center_s + v2!(area_s)) / (area + area_s);
+            area = area + area_s;
+            mmoi = mmoi + mmoi_s;
+
+            prev = i;
+        }
+
+        let density: f64 = mass / area;
+        mmoi = mmoi * density;
+        mmoi = mmoi - Vector2::dot(center, center);
+
+        mmoi
     }
 
     /// Convert local Vector2 (vector about the object's origin) into global space
@@ -233,10 +269,10 @@ impl Body {
         return self.position + m
     }
     pub fn inv_mass(&self) -> f64 {
-        return if self.frozen { 0.0 } else { 1.0 / self.mass }
+        return if self.frozen || self.mass == 0.0 { 0.0 } else { 1.0 / self.mass }
     }
     pub fn inv_inertia(&self) -> f64 {
-        return if self.frozen { 0.0 } else { 1.0 / self.inertia }
+        return if self.frozen || self.inertia == 0.0 { 0.0 } else { 1.0 / self.inertia }
     }
 
     /* --------------------- SETTERS -------------------- */

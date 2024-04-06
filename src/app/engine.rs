@@ -29,7 +29,7 @@ impl Engine {
     pub fn new(shared: TSharedRef) -> Self {
         Engine {
             shared: shared.clone(),
-            gravity: v2!(0f64, 1f64, 9.8),
+            gravity: v2!(0f64, 1f64, 9.81),
             detector: CollisionDetector::new(shared.clone()),
             resolver: CollisionResolver::new(shared.clone()),
 
@@ -39,10 +39,11 @@ impl Engine {
     pub fn step(&mut self, bodies: &Vec<TBodyRef>, dt: f64) {
         let dt = dt / (ITERATIONS as f64);
 
-        for _ in 0..ITERATIONS {
+        // for _ in 0..ITERATIONS {
             // Resolve gravity
             for body_ref in bodies {
-                self.resolve_gravity(body_ref);
+                if body_ref.borrow().frozen { continue; }
+                self.resolve_gravity(body_ref, dt);
             }
 
             // Update body position/rotation
@@ -55,10 +56,10 @@ impl Engine {
 
             let result = self.detector.evaluate(bodies);
             self.resolver.resolve(result);
-        }
+        // }
     }
 
-    fn resolve_gravity(&self, body: &TBodyRef) {
+    fn resolve_gravity(&self, body: &TBodyRef, dt: f64) {
         let mut body = body.borrow_mut();
 
         if body.frozen {
@@ -66,7 +67,7 @@ impl Engine {
         }
 
         let gravity = self.gravity.to_vec2() * self.gravity.m;
-        body.velocity = body.velocity + gravity / (ITERATIONS as f64);
+        body.velocity = body.velocity + gravity;
     }
 }
 

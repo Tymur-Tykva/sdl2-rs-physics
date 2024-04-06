@@ -25,6 +25,7 @@ pub type TSharedRef = Rc<RefCell<Shared>>;
 // Collision
 pub const GRID_SIZE: Vector2<usize> = crate::v2!(20, 20);
 pub const PRECISION: i32 = 6;
+pub const VERY_SMALL: f64 = 0.001;
 pub type TBodyRef = Rc<RefCell<Body>>;
 pub type TCollisionGrid = Vec<Vec<Vec<TBodyRef>>>;
 pub type TCollisionPairs = Vec<[TBodyRef; 2]>;
@@ -96,6 +97,32 @@ impl<T: Copy + Num + AsPrimitive<f64> + AsPrimitive<Disp>> Vector2<T> {
 
         return v2 * (dot / v2.mag().powi(2));
     }
+    pub fn p_dist(p: Vector2<f64>, l1: Vector2<f64>, l2: Vector2<f64>) -> (f64, Vector2<f64>) {
+        let mut out: Vector2<f64>;
+
+        let l1_l2 = l2 - l1;
+        let l1_p = p - l1;
+
+        let proj = Vector2::dot(l1_p, l1_l2);
+        let len_sq = l1_l2.x * l1_l2.x + l1_l2.y * l1_l2.y;
+        let d = proj / len_sq;
+
+        if d <= 0.0 {
+            out = l1;
+        } else if d >= 1.0 {
+            out = l2;
+        } else {
+            out = l1 + l1_l2 * d;
+        }
+
+        (
+            (out.x - p.x).powi(2) + (out.y - p.y).powi(2),
+            out
+        )
+    }
+    pub fn almost_eq(v1: Vector2<f64>, v2: Vector2<f64>) -> bool {
+        return (v1.x - v1.x).powi(2) + (v1.y - v1.y).powi(2) <= VERY_SMALL * VERY_SMALL
+    }
 }
 
 // Conversion of Vector2 into a Vector2 of a different type; Vector2<A> -> Vector2<B>
@@ -155,7 +182,7 @@ impl<T: Mul<Output=T>> Mul<Vector2<T>> for Vector2<T> {
     }
 }
 
-// Mathematical operations between a Vector2 and a numerical
+// Mathematical operations between a Vector2 and a number
 impl<T: Mul<Output=T> + Copy> Mul<T> for Vector2<T> {
     type Output = Vector2<T>;
     fn mul(self, rhs: T) -> Self::Output {
@@ -263,4 +290,8 @@ macro_rules! vtx {
 /* ------------------- FUNCTIONS ------------------- */
 pub fn round(n: f64) -> f64 {
     return (n * 10f64.powi(PRECISION)).round() / 10f64.powi(PRECISION)
+}
+
+pub fn almost_eq(f1: f64, f2: f64) -> bool {
+    return (f1 - f2).abs() < VERY_SMALL
 }

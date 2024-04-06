@@ -9,6 +9,8 @@
 // Crates
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::thread::sleep;
+use std::time::Duration;
 
 use sdl2::{Sdl, VideoSubsystem};
 use sdl2::pixels::Color;
@@ -70,7 +72,7 @@ impl<'a> Video {
             grid: false,
             points: false,
             wireframe: false,
-            collision_indicator: false,
+            collision_indicator: true,
         }
     }
 
@@ -221,9 +223,12 @@ impl<'a> Video {
                 let point = pair.point.to();
                 self.point(point, Color::CYAN);
 
+                // println!("p={:?}", point);
+
                 self.point(b1.center().to(), Color::YELLOW);
                 self.point(b2.center().to(), Color::YELLOW);
             }
+
         }
     }
 

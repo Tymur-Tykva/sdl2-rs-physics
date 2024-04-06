@@ -10,6 +10,7 @@
 pub mod app;
 pub mod common;
 
+use std::f64::consts::PI;
 // Crates
 use crate::common::{BodyForm, Vector2};
 use crate::app::{App, objects::Body};
@@ -26,8 +27,8 @@ fn main() {
 
     // PENTAGON SETUP
     let bodies = vec![
-        poly!(v2!(300, 250), 100, 17),
-        poly!(v2!(370, 100), 50, 12, 1.5),
+        poly!(v2!(300, 250), 100, 4, 1.0).set_rotation(PI / 4.0),
+        // poly!(v2!(370, 100), 50, 12, 1.5),
     ];
 
 
