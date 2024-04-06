@@ -139,9 +139,10 @@ impl App {
             // Apply changes
             self.video.canvas.present();
 
-            // if self.shared.borrow().narrow_phase_pairs.len() > 0 {
-            //     thread::sleep(Duration::from_secs(1));
-            // }
+            if self.shared.borrow().narrow_phase_pairs.len() > 0 {
+                thread::sleep(Duration::from_secs(2));
+                // return;
+            }
 
             thread::sleep(Duration::from_millis(1000/self.fps));
             // thread::sleep(Duration::from_millis(1000));

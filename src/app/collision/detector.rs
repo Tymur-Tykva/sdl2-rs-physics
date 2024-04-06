@@ -146,7 +146,7 @@ impl CollisionDetector {
             let mut colliding = true;
             let mut min_overlap: f64 = -1.0;
             let mut min_axis: Vector2<f64> = v2!(-1.0);
-            let mut min_point: Vector2<f64> = v2!(0.0);
+            // let mut min_point: Vector2<f64> = v2!(0.0);
 
             // Get all non-duplicate axes
             let mut axes: Vec<Axis> = body1.axes().iter().map(|&ax| Axis { v2: ax, parent: pair[0].clone() }).collect();
@@ -159,18 +159,11 @@ impl CollisionDetector {
             // Check whether points overlap in axis projection
             for axis in axes {
                 let ax = axis.v2;
-                let mut proj_1 = self.projection_bounds(&body1, ax.norm());
-                let mut proj_2 = self.projection_bounds(&body2, ax.norm());
-                let mut swapped = true;
-
-                // Swap to b1 & b2 to ensure b2 always 'rightmost'
-                if proj_2.max < proj_1.max {
-                    (proj_1, proj_2) = (proj_2, proj_1);
-                    swapped = true;
-                }
+                let proj_1 = self.projection_bounds(&body1, ax.norm());
+                let proj_2 = self.projection_bounds(&body2, ax.norm());
 
                 // Check if they are colliding
-                if proj_1.max < proj_2.min {
+                if proj_1.max < proj_2.min || proj_2.max < proj_1.min {
                     colliding = false;
                     break;
                 } else {
@@ -180,7 +173,6 @@ impl CollisionDetector {
                     if min_overlap == -1.0 || overlap < min_overlap {
                         min_overlap = overlap;
                         min_axis = ax.norm();
-                        min_point = if swapped { proj_1.p_max } else { proj_2.p_max };
                     }
                 }
             }
@@ -188,13 +180,11 @@ impl CollisionDetector {
             if colliding {
                 let contacts = self.find_contacts(&body1, &body2);
 
-                dbg!(&contacts);
-
                 let colliding_pair = CollisionResult {
                     bodies: pair.clone(),
                     normal: min_axis,
                     overlap: min_overlap,
-                    point: min_point,
+                    contacts,
                 };
 
                 colliding_pairs.push(colliding_pair);
@@ -212,26 +202,25 @@ impl CollisionDetector {
         let vertices: Vec<Vector2<f64>> = body.vertices.clone().iter().map(|vtx| body.globalise(vtx.to_vec2()).to()).collect();
 
         let proj = Vector2::dot(vertices[0], axis);
+        // let mut max: f64 = 0f64;
+        // let mut min: f64 = 10f64.powi(10);
         let mut max: f64 = proj;
-        let mut p_max: Vector2<f64> = vertices[0];
         let mut min: f64 = proj;
-        let mut p_min: Vector2<f64> = vertices[0];
 
         // Get bounds over polygon`
-        for i in 1..body.sides as usize {
+        for i in 0..body.sides as usize {
             let proj = Vector2::dot(vertices[i], axis);
-
+            println!("p={proj}, mx={max}, mn={min}");
             if proj < min {
                 min = proj;
-                p_min = vertices[i];
-            } else if proj > max {
+            }
+            if proj > max {
                 max = proj;
-                p_max = vertices[i];
             }
         }
 
         // println!("{min}, {max} | {:?}, {:?}", p_min, p_max);
-        Projection {min, max, p_min, p_max}
+        Projection { min, max }
     }
 
     /// Find collision contact points
@@ -239,8 +228,8 @@ impl CollisionDetector {
         let v1: Vec<Vector2<f64>> = b1.vertices.clone().iter().map(|v| b1.globalise(v.to_vec2()).to()).collect();
         let v2: Vec<Vector2<f64>> = b2.vertices.clone().iter().map(|v| b2.globalise(v.to_vec2()).to()).collect();
 
-        let mut contacts: Vec<Vector2<f64>> = vec![v2!(0.0)];
-        let mut min_dist: f64 = 9f64.powi(10);
+        let mut contacts: Vec<Vector2<f64>> = vec![v2!(0.0), v2!(0.0)];
+        let mut min_dist: f64 = 10f64.powi(10);
 
         for i in 0..v1.len() {
             let p = v1[i];
@@ -251,18 +240,16 @@ impl CollisionDetector {
 
                 let (d, contact) = Vector2::<f64>::p_dist(p, l1, l2);
 
+                // println!("d={}, md={}, eq={}", d.sqrt(), min_dist.sqrt(), almost_eq(d.sqrt(), min_dist.sqrt()));
+
                 if almost_eq(d, min_dist) {
-                    if contacts.len() == 2 && !(
-                        Vector2::<f64>::almost_eq(contact, contacts[0]) &&
-                        Vector2::<f64>::almost_eq(contact, contacts[1])
-                    ) {
-                       contacts[1] == contact;
-                    } else if contacts.len() == 1 && Vector2::<f64>::almost_eq(contact, contacts[0]) {
-                        contacts.push(contact);
+                    if !Vector2::<f64>::almost_eq(contact, contacts[0]) {
+                       contacts[1] = contact;
                     }
                 } else if d < min_dist {
                     min_dist = d;
                     contacts[0] = contact;
+                    contacts[1] = v2!(0f64);
                 }
             }
         }
@@ -270,25 +257,31 @@ impl CollisionDetector {
         for i in 0..v2.len() {
             let p = v2[i];
 
-            for j in 0..v2.len() {
+            for j in 0..v1.len() {
                 let l1 = v1[j];
                 let l2 = v1[if j + 1 == v1.len() { 0 } else { j + 1 }];
 
                 let (d, contact) = Vector2::<f64>::p_dist(p, l1, l2);
 
+                // println!("d={}, md={}, eq={}", d.sqrt(), min_dist.sqrt(), almost_eq(d.sqrt(), min_dist.sqrt()));
+
                 if almost_eq(d, min_dist) {
-                    if contacts.len() == 2 && !(
-                        Vector2::<f64>::almost_eq(contact, contacts[0]) &&
-                            Vector2::<f64>::almost_eq(contact, contacts[1])
-                    ) {
-                        contacts[1] == contact;
-                    } else if contacts.len() == 1 && Vector2::<f64>::almost_eq(contact, contacts[0]) {
-                        contacts.push(contact);
+                    if !Vector2::<f64>::almost_eq(contact, contacts[0]) {
+                        contacts[1] = contact;
                     }
                 } else if d < min_dist {
                     min_dist = d;
                     contacts[0] = contact;
+                    contacts[1] = v2!(0f64);
                 }
+            }
+        }
+
+        // Remove all occurrences of (0, 0)
+        for i in 0..contacts.len() {
+            let el = contacts[i];
+            if el.x == 0f64 && el.y == 0f64 {
+                contacts.remove(i);
             }
         }
 

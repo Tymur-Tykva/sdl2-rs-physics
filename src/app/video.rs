@@ -220,10 +220,11 @@ impl<'a> Video {
 
                 self.line(b1.globalise(v2!(0.0)).disp(), b2.globalise(v2!(0.0)).disp(), Color::RED);
 
-                let point = pair.point.to();
-                self.point(point, Color::CYAN);
+                for i in 0..pair.contacts.len() {
+                    self.point(pair.contacts[i].clone().to(), Color::CYAN);
+                }
 
-                // println!("p={:?}", point);
+                println!("o={}", pair.overlap);
 
                 self.point(b1.center().to(), Color::YELLOW);
                 self.point(b2.center().to(), Color::YELLOW);

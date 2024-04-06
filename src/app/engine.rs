@@ -12,7 +12,7 @@ use crate::common::{TBodyRef, TSharedRef, Vector2, Vector2M};
 use crate::v2;
 
 /* -------------------- VARIABLES ------------------- */
-const ITERATIONS: u32 = 1;
+const ITERATIONS: u32 = 8;
 
 
 /* ------------------- STRUCTURES ------------------- */
@@ -39,7 +39,7 @@ impl Engine {
     pub fn step(&mut self, bodies: &Vec<TBodyRef>, dt: f64) {
         let dt = dt / (ITERATIONS as f64);
 
-        // for _ in 0..ITERATIONS {
+        for _ in 0..ITERATIONS {
             // Resolve gravity
             for body_ref in bodies {
                 if body_ref.borrow().frozen { continue; }
@@ -56,7 +56,7 @@ impl Engine {
 
             let result = self.detector.evaluate(bodies);
             self.resolver.resolve(result);
-        // }
+        }
     }
 
     fn resolve_gravity(&self, body: &TBodyRef, dt: f64) {
@@ -66,7 +66,7 @@ impl Engine {
             return;
         }
 
-        let gravity = self.gravity.to_vec2() * self.gravity.m;
+        let gravity = self.gravity.to_vec2() * self.gravity.m / (ITERATIONS as f64);
         body.velocity = body.velocity + gravity;
     }
 }

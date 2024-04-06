@@ -25,7 +25,7 @@ pub type TSharedRef = Rc<RefCell<Shared>>;
 // Collision
 pub const GRID_SIZE: Vector2<usize> = crate::v2!(20, 20);
 pub const PRECISION: i32 = 6;
-pub const VERY_SMALL: f64 = 0.001;
+pub const VERY_SMALL: f64 = 0.01;
 pub type TBodyRef = Rc<RefCell<Body>>;
 pub type TCollisionGrid = Vec<Vec<Vec<TBodyRef>>>;
 pub type TCollisionPairs = Vec<[TBodyRef; 2]>;
@@ -121,7 +121,7 @@ impl<T: Copy + Num + AsPrimitive<f64> + AsPrimitive<Disp>> Vector2<T> {
         )
     }
     pub fn almost_eq(v1: Vector2<f64>, v2: Vector2<f64>) -> bool {
-        return (v1.x - v1.x).powi(2) + (v1.y - v1.y).powi(2) <= VERY_SMALL * VERY_SMALL
+        return (v1.x - v2.x).powi(2) + (v1.y - v2.y).powi(2) <= VERY_SMALL * VERY_SMALL
     }
 }
 
@@ -246,8 +246,6 @@ pub struct AABB {
 pub struct Projection {
     pub min: f64,
     pub max: f64,
-    pub p_min: Vector2<f64>,
-    pub p_max: Vector2<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -255,7 +253,7 @@ pub struct CollisionResult {
     pub bodies: [TBodyRef; 2],
     pub normal: Vector2<f64>,
     pub overlap: f64,
-    pub point: Vector2<f64>, // The collision point is an estimate, 1/2 way on collision normal
+    pub contacts: Vec<Vector2<f64>>, // The collision point is an estimate, 1/2 way on collision normal
 }
 
 /* --------------------- MACROS --------------------- */
