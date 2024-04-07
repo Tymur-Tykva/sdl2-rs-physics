@@ -60,7 +60,7 @@ impl Body {
         let origin: Vector2<Crd>;
         // let center: Vector2<f64>;
         let vertices: Vec<Vertex>;
-        let inertia: f64;
+        let mut inertia: f64;
 
         // If the body is a rect-like
         if sides == 4 && width.is_some() && height.is_some() {
@@ -87,8 +87,9 @@ impl Body {
 
             inertia = Self::calculate_inertia(vertices.clone(), mass);
         }
+        // inertia *= 1.2;
 
-        println!("inertia={inertia}, s={sides}");
+        // println!("inertia={inertia}, s={sides}");
 
         Body {
             // Internal
@@ -245,8 +246,8 @@ impl Body {
         let mut axes = Vec::new();
 
         for i in 0..self.sides as usize {
-            let p1 = self.vertices[i].to_vec2();
-            let p2 = self.vertices[if i + 1 == self.sides as usize { 0 } else { i + 1 }].to_vec2();
+            let p1 = self.globalise(self.vertices[i].to_vec2());
+            let p2 = self.globalise(self.vertices[if i + 1 == self.sides as usize { 0 } else { i + 1 }].to_vec2());
 
             let edge = p2 - p1;
             let normal = v2!(-edge.y, edge.x);

@@ -7,7 +7,6 @@
     * Narrow phase uses SAT (Separating Axis Theorem)
  */
 /* --------------------- IMPORTS -------------------- */
-use std::collections::HashMap;
 // Crates
 use crate::app::objects::Body;
 use crate::common::{ConvertPrimitives, Disp, GRID_SIZE, TBodyRef, TCollisionPairs, TCollisionGrid, TSharedRef, Vector2, Crd, CollisionResult, Projection, Axis, Vertex, almost_eq};
@@ -163,7 +162,7 @@ impl CollisionDetector {
                 let proj_2 = self.projection_bounds(&body2, ax.norm());
 
                 // Check if they are colliding
-                if proj_1.max < proj_2.min || proj_2.max < proj_1.min {
+                if proj_1.max <= proj_2.min || proj_2.max <= proj_1.min {
                     colliding = false;
                     break;
                 } else {
@@ -179,6 +178,9 @@ impl CollisionDetector {
 
             if colliding {
                 let contacts = self.find_contacts(&body1, &body2);
+
+                let proj_1 = self.projection_bounds(&body1, min_axis);
+                let proj_2 = self.projection_bounds(&body2, min_axis);
 
                 let colliding_pair = CollisionResult {
                     bodies: pair.clone(),
@@ -201,16 +203,15 @@ impl CollisionDetector {
     fn projection_bounds(&self, body: &Body, axis: Vector2<f64>) -> Projection {
         let vertices: Vec<Vector2<f64>> = body.vertices.clone().iter().map(|vtx| body.globalise(vtx.to_vec2()).to()).collect();
 
-        let proj = Vector2::dot(vertices[0], axis);
-        // let mut max: f64 = 0f64;
-        // let mut min: f64 = 10f64.powi(10);
-        let mut max: f64 = proj;
-        let mut min: f64 = proj;
+        // let proj = Vector2::dot(vertices[0], axis);
+        // let mut max: f64 = proj;
+        // let mut min: f64 = proj;
+        let mut min = f64::MAX;
+        let mut max = f64::MIN;
 
         // Get bounds over polygon`
         for i in 0..body.sides as usize {
             let proj = Vector2::dot(vertices[i], axis);
-            println!("p={proj}, mx={max}, mn={min}");
             if proj < min {
                 min = proj;
             }

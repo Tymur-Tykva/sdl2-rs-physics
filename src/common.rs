@@ -243,6 +243,7 @@ pub struct AABB {
     pub points: Vec<Vector2<Crd>>,
 }
 
+#[derive(Debug)]
 pub struct Projection {
     pub min: f64,
     pub max: f64,

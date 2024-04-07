@@ -72,7 +72,7 @@ impl<'a> Video {
             grid: false,
             points: false,
             wireframe: false,
-            collision_indicator: true,
+            collision_indicator: false,
         }
     }
 
@@ -224,7 +224,7 @@ impl<'a> Video {
                     self.point(pair.contacts[i].clone().to(), Color::CYAN);
                 }
 
-                println!("o={}", pair.overlap);
+                // println!("o={}", pair.overlap);
 
                 self.point(b1.center().to(), Color::YELLOW);
                 self.point(b2.center().to(), Color::YELLOW);

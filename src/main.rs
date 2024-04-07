@@ -27,11 +27,12 @@ fn main() {
 
     // PENTAGON SETUP
     let bodies = vec![
-        // poly!(v2!(50, 250), 100, 5, 1.0),
+        rect!(v2!(50, 250), 500, 50).set_frozen(true).set_rotation(PI / 12f64),
+        poly!(v2!(50, 0), 50, 5),
         // poly!(v2!(250, 250), 80, 4, 1.0),
         // poly!(v2!(450, 250), 50, 7, 1.0),
-        poly!(v2!(650, 250), 120, 4, 1.5).set_rotation(PI / 3.0),
-        poly!(v2!(550, 250), 30, 4, 1.0),
+        // poly!(v2!(500, 250), 120, 3, 1.0),
+        // poly!(v2!(640, 250), 30, 3, 1.0).set_rotation(PI / 3.0),
     ];
 
 

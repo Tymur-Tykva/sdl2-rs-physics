@@ -46,8 +46,8 @@ impl CollisionResolver {
 
             // Body constants
             let e = if b1.restitution <= b2.restitution { b1.restitution } else { b2.restitution };
-            let ks = 0.12; // Static frictional coefficient
-            let kd = 0.04; // Dynamic frictional coefficient
+            let ks = 0.18; // Static frictional coefficient
+            let kd = 0.08; // Dynamic frictional coefficient
 
             // Shared arrays
             let mut js: Vec<f64> = Vec::new();
