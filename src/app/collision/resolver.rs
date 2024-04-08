@@ -20,7 +20,6 @@ pub struct CollisionResolver {
 
 /* -------------------- FUNCTIONS ------------------- */
 const CORRECTION_PERCENTAGE: f64 = 0.4;
-const SLOP: f64 = 0.05;
 
 impl CollisionResolver {
     pub fn new(shared: TSharedRef) -> Self {
@@ -45,9 +44,9 @@ impl CollisionResolver {
             }
 
             // Body constants
-            let e = if b1.restitution <= b2.restitution { b1.restitution } else { b2.restitution };
-            let ks = 0.18; // Static frictional coefficient
-            let kd = 0.08; // Dynamic frictional coefficient
+            let e = (b1.material.e + b2.material.e) * 0.5;
+            let ks = (b1.material.ks + b2.material.ks) * 0.5; // Static frictional coefficient
+            let kd = (b1.material.kd + b2.material.kd) * 0.5; // Dynamic frictional coefficient
 
             // Shared arrays
             let mut js: Vec<f64> = Vec::new();

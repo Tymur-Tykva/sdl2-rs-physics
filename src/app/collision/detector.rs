@@ -45,8 +45,6 @@ impl CollisionDetector {
 
     /// Returns object pairs for more precise analysis in the narrow phase
     fn broad_phase(&mut self, bodies: &Vec<TBodyRef>) -> TCollisionPairs {
-        // TODO: Destroy objects too far out of bounds
-
         let window_size: Vector2<Crd> = self.shared.borrow_mut().window_size.to();
         let bounds: Vector2<Crd> = window_size / GRID_SIZE.to();
         // Broad-phase results

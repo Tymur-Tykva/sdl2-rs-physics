@@ -12,7 +12,7 @@ use crate::common::{TBodyRef, TSharedRef, Vector2, Vector2M};
 use crate::v2;
 
 /* -------------------- VARIABLES ------------------- */
-const ITERATIONS: u32 = 8;
+const ITERATIONS: u32 = 10;
 
 
 /* ------------------- STRUCTURES ------------------- */
@@ -32,7 +32,6 @@ impl Engine {
             gravity: v2!(0f64, 1f64, 9.81),
             detector: CollisionDetector::new(shared.clone()),
             resolver: CollisionResolver::new(shared.clone()),
-
         }
     }
 

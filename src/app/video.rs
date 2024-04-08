@@ -9,16 +9,16 @@
 // Crates
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::thread::sleep;
-use std::time::Duration;
 
+use sdl2::gfx::*;
 use sdl2::{Sdl, VideoSubsystem};
+use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::pixels::Color;
 use sdl2::rect::{Point, Rect};
 use sdl2::render::WindowCanvas;
 use sdl2::video::Window;
 
-use crate::common::{ConvertPrimitives, Disp, GRID_SIZE, Shared, TBodyRef, TSharedRef, Vector2};
+use crate::common::{ConvertPrimitives, Disp, GRID_SIZE, Shared, TBodyRef, TSharedRef, Vector2, Colors};
 use crate::v2;
 
 /* -------------------- VARIABLES ------------------- */
@@ -30,6 +30,7 @@ pub struct Video {
 
     pub subsys: VideoSubsystem,
     pub canvas: WindowCanvas,
+    pub colors: Colors,
 
     aabb: bool,
     grid: bool,
@@ -66,11 +67,12 @@ impl<'a> Video {
 
             subsys,
             canvas,
+            colors: Colors,
             // window,
 
             aabb: false,
             grid: false,
-            points: false,
+            points: true,
             wireframe: false,
             collision_indicator: false,
         }
@@ -98,50 +100,30 @@ impl<'a> Video {
         // Draw AABB
         if self.aabb {
             let points: Vec<Vector2<Disp>> = body.aabb().points.iter().map(|p| p.disp()).collect();
+            let x: Vec<i16> = points.clone().iter().map(|p| p.x as i16).collect();
+            let y: Vec<i16> = points.clone().iter().map(|p| p.y as i16).collect();
 
-            self.line(points[0], points[3], Color::GREEN);
-            for i in 0..(points.len() - 1) {
-                self.line(points[i], points[i + 1], Color::GREEN);
-            }
+            let draw_color = self.canvas.draw_color();
+            self.canvas.aa_polygon(x.as_slice(), y.as_slice(), Colors::AC3).unwrap();
+            self.canvas.set_draw_color(draw_color);
         }
 
-        // Draw internal lines
-        // Dependent on: self.wireframe == true
-        if self.wireframe {
-            for i in 0..(vertices.len() - 1) {
-                for j in i..vertices.len() {
-                    self.line(
-                        body.globalise(body.vertices[i].to_vec2()).disp(),
-                        body.globalise(body.vertices[j].to_vec2()).disp(),
-                        Color::GREY
-                    )
-                }
-            }
-        }
+        let mut x: Vec<i16> = vertices.clone().iter().map(|vtx| body.globalise(vtx.to_vec2()).x as i16).collect();
+        let mut y: Vec<i16> = vertices.clone().iter().map(|vtx| body.globalise(vtx.to_vec2()).y as i16).collect();
 
-        // Draw external lines
-        self.line(
-            body.globalise(vertices[0].to_vec2()).disp(),
-            body.globalise(vertices[vertices.len() - 1].to_vec2()).disp(),
-            Color::WHITE,
-        );
-
-        for i in 0..(vertices.len() - 1) {
-            self.line(
-                body.globalise(vertices[i].to_vec2()).disp(),
-                body.globalise(vertices[i + 1].to_vec2()).disp(),
-                Color::WHITE,
-            );
-        }
+        let draw_color = self.canvas.draw_color();
+        self.canvas.filled_polygon(x.as_slice(), y.as_slice(), Colors::AC1).unwrap();
+        self.canvas.aa_polygon(x.as_slice(), y.as_slice(), Colors::AC0).unwrap();
+        self.canvas.set_draw_color(draw_color);
 
         // Draw points
         // Dependent on: self.points == true
         if self.points {
             for i in 0..vertices.len() {
-                self.point(body.globalise(vertices[i].to_vec2()).disp(), Color::YELLOW);
+                self.point(body.globalise(vertices[i].to_vec2()).disp(), Colors::AC2);
             }
             // Origin
-            self.point(body.globalise(v2!(0.0)).disp(), Color::BLUE);
+            self.point(body.globalise(v2!(0.0)).disp(), Colors::AC3);
         }
     }
 
@@ -188,7 +170,7 @@ impl<'a> Video {
             }
 
             // Draw grid
-            let color = Color::RGB(50, 50, 50);
+            let color = Colors::AC0;
             for i in 0..=GRID_SIZE.x {
                 let i = i as Disp;
                 self.line(v2!(i * scalar.x, 0), v2!(i * scalar.x, window_size.y), color);
@@ -218,7 +200,7 @@ impl<'a> Video {
                 let b1 = pair.bodies[0].borrow_mut();
                 let b2 = pair.bodies[1].borrow_mut();
 
-                self.line(b1.globalise(v2!(0.0)).disp(), b2.globalise(v2!(0.0)).disp(), Color::RED);
+                self.line(b1.globalise(v2!(0.0)).disp(), b2.globalise(v2!(0.0)).disp(), Colors::AC2);
 
                 for i in 0..pair.contacts.len() {
                     self.point(pair.contacts[i].clone().to(), Color::CYAN);

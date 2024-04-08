@@ -13,6 +13,8 @@ use std::rc::Rc;
 
 use num::cast::AsPrimitive;
 use num::Num;
+use rand::Rng;
+use sdl2::pixels::Color;
 
 use crate::app::objects::Body;
 
@@ -254,8 +256,44 @@ pub struct CollisionResult {
     pub bodies: [TBodyRef; 2],
     pub normal: Vector2<f64>,
     pub overlap: f64,
-    pub contacts: Vec<Vector2<f64>>, // The collision point is an estimate, 1/2 way on collision normal
+    pub contacts: Vec<Vector2<f64>>,
 }
+
+pub struct Materials;
+
+impl Materials {
+    pub const ROCK: Material = Material { density: 0.5, e: 0.3, ks: 0.12, kd: 0.06 };
+    pub const METAL: Material = Material { density: 0.7, e: 0.15, ks: 0.15, kd: 0.08 };
+    pub const BOUNCY: Material = Material { density: 0.2, e: 1.2, ks: 0.08, kd: 0.01 };
+
+    // pub const STATIC: Material = Material { density: 0.0, e: 0.4, ks: 0.14, kd: 0.4 };
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Material {
+    pub density: f64,
+    pub e: f64,
+    pub ks: f64,
+    pub kd: f64,
+}
+
+pub struct Colors;
+
+impl Colors {
+    pub const BG: Color = Color::RGB(255, 255, 255);
+    pub const AC0: Color = Color::RGB(35, 36, 36);
+    pub const AC1: Color = Color::RGB(91, 130, 102);
+    pub const AC2: Color = Color::RGB(248, 51, 60);
+    pub const AC3: Color = Color::RGB(36, 123, 160);
+
+    pub fn random_accent() -> Color {
+        let rng = rand::thread_rng().gen_range(0..3);
+        let colors = [Self::AC1, Self::AC2, Self::AC3];
+
+        colors[rng]
+    }
+}
+
 
 /* --------------------- MACROS --------------------- */
 #[macro_export]

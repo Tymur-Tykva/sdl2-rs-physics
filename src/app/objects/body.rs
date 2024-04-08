@@ -9,7 +9,7 @@
 // Crates
 use std::f64::consts::PI;
 
-use crate::common::{AABB, BodyForm, ConvertPrimitives, Disp, Crd, Vector2, Vertex};
+use crate::common::{AABB, BodyForm, ConvertPrimitives, Disp, Crd, Vector2, Vertex, Material, Materials};
 use crate::{v2, vtx};
 
 /* -------------------- VARIABLES ------------------- */
@@ -24,25 +24,24 @@ pub struct Body {
     pub position: Vector2<Crd>,
     pub rotation: f64,
     pub origin: Vector2<Crd>,
-    // pub center: Vector2<f64>,
     pub radius: Option<f64>,
+
     // BodyForm::Polygon
     pub sides: u32,
     pub vertices: Vec<Vertex>,
     pub width: Option<u32>,
     pub height: Option<u32>,
+
     // Physics
     pub mass: f64, // Mass of the object, exerted at it's center of mass
-    pub inertia: f64,
+    pub material: Material,
     pub frozen: bool, // Whether the body's forces shouldn't be updated at the physics step
     pub velocity: Vector2<f64>,
-    pub restitution: f64,
-    // pub initial_friction: f64,
-    // pub continuous_friction: f64,
     pub angular_velocity: f64,
+    pub inertia: f64,
     pub torque: f64,
-    pub air_friction: f64,
     pub force_buffer: Vector2<f64>,
+
     // Meta
     pub collision_group: i32,
     pub ignore_groups: Vec<i32>,
@@ -55,18 +54,19 @@ impl Body {
     pub fn new(
         form: BodyForm, position: Vector2<Disp>, radius: Option<f64>, // Internal properties
         sides: u32, width: Option<u32>, height: Option<u32>,          // Polygonal properties
-        mass: f64, restitution: f64,                                  // Physics properties
+        material: Material,                                           // Physics properties
     ) -> Self {
         let origin: Vector2<Crd>;
-        // let center: Vector2<f64>;
         let vertices: Vec<Vertex>;
-        let mut inertia: f64;
+        let inertia: f64;
+        let mass: f64;
 
-        // If the body is a rect-like
-        if sides == 4 && width.is_some() && height.is_some() {
+        if sides == 4 && width.is_some() && height.is_some() { // If the body is a rect-like
             let width = width.unwrap_or(1)   as Crd;
             let height = height.unwrap_or(1) as Crd;
 
+            // mass = material.density * width * height;
+            mass = material.density * 1f64;
             origin = v2!(0).to();
             inertia = (1.0 / 12.0) * mass * (width * width + height * height);
 
@@ -77,19 +77,16 @@ impl Body {
                 vtx!(2, width, height),
                 vtx!(3, width, 0.0   ),
             ];
-            // Standard polygon formation
-        } else {
+        } else { // Standard polygon formation
             let radius = radius.unwrap_or(1f64);
+
             origin = Vector2::from(radius).to();
-
-            // Call vertex calculation
             vertices = Body::calculate_vertices(sides, radius);
-
+            mass = material.density * Self::calculate_area(vertices.clone());
             inertia = Self::calculate_inertia(vertices.clone(), mass);
         }
-        // inertia *= 1.2;
 
-        // println!("inertia={inertia}, s={sides}");
+        println!("mass={mass}");
 
         Body {
             // Internal
@@ -98,24 +95,23 @@ impl Body {
             rotation: 0.0,
             origin,
             radius,
+
             // BodyForm::Polygon
             sides,
             vertices,
             width,
             height,
+
             // Physics
             mass,
-            inertia,
-            // center,
-            restitution,
-            // initial_friction: 0.9,
-            // continuous_friction: 0.7,
+            material,
             frozen: false,
             velocity: v2!(0.0),
             angular_velocity: 0.0,
+            inertia,
             torque: 0.0,
-            air_friction: 0.01,
             force_buffer: v2!(0.0),
+
             // Meta
             collision_group: 0,
             ignore_groups: vec![],
@@ -148,7 +144,6 @@ impl Body {
         let a = (2f64 * PI) / sides as f64;
         let mut vertices = Vec::new();
 
-
         // Optimization for when number of sides is even
         if sides % 2 == 0 {
             for i in 1..=(sides - 2) / 2 {
@@ -179,6 +174,21 @@ impl Body {
 
         vertices.sort_by(|&a, &b| (a.id).cmp(&b.id));
         vertices
+    }
+
+    /// Internal method for computing the area of a polygon
+    fn calculate_area(vertices: Vec<Vertex>) -> f64 {
+        let x: Vec<f64> = vertices.iter().map(|vtx| vtx.to_vec2().to().x).collect();
+        let y: Vec<f64> = vertices.iter().map(|vtx| vtx.to_vec2().to().y).collect();
+
+        let mut area = 0f64;
+
+        for i in (0..vertices.len()).step_by(2) {
+            area += x[(i + 1) % x.len()] * (y[(i + 2) % y.len()] - y[i % y.len()]) + y[(i + 1) % y.len()] * (x[i % x.len()] - x[(i + 2) % x.len()]);
+        }
+
+        // area.abs() / 2f64
+        1f64
     }
 
     /// Internal method used for calculating the moment of inertia (mmoi) of a non-rect polygon
@@ -298,24 +308,24 @@ impl Body {
 /* --------------------- MACROS --------------------- */
 #[macro_export]
 macro_rules! poly {
-    // Generate polygon with a mass of 1
+    // Generate polygon made off rock
     ($pos:expr, $radius:expr, $sides:expr) => {
-        Body::new(BodyForm::Polygon, $pos, Some($radius as f64), $sides, None, None, 1.0, 0.7)
+        Body::new(BodyForm::Polygon, $pos, Some($radius as f64), $sides, None, None, Materials::ROCK)
     };
-    // Generate polygon with custom mass
-    ($pos:expr, $radius:expr, $sides:expr, $mass:expr) => {
-        Body::new(BodyForm::Polygon, $pos, Some($radius as f64), $sides, None, None, $mass, 0.7)
+    // Generate polygon with custom material
+    ($pos:expr, $radius:expr, $sides:expr, $material:expr) => {
+        Body::new(BodyForm::Polygon, $pos, Some($radius as f64), $sides, None, None, $material)
     };
 }
 
 #[macro_export]
 macro_rules! rect {
-    // Generate a rect-like with a mass of 1
+    // Generate a rect-like made off rock
     ($pos:expr, $width:expr, $height:expr) => {
-        Body::new(BodyForm::Polygon, $pos, None, 4, Some($width), Some($height), 1.0, 0.7)
+        Body::new(BodyForm::Polygon, $pos, None, 4, Some($width), Some($height), Materials::ROCK)
     };
-    // Generate a rect-like with a custom mass
-    ($pos:expr, $width:expr, $height:expr, $mass:expr) => {
-        Body::new(BodyForm::Polygon, $pos, None, 4, Some($width), Some($height), $mass, 0.7)
+    // Generate a rect-like with a custom material
+    ($pos:expr, $width:expr, $height:expr, $material:expr) => {
+        Body::new(BodyForm::Polygon, $pos, None, 4, Some($width), Some($height), $material)
     };
 }

@@ -20,7 +20,9 @@ use std::thread;
 use std::time::Duration;
 
 use sdl2::event::Event;
+use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
 use sdl2::Sdl;
 use sdl2::video::Window;
 
@@ -29,7 +31,7 @@ use ssm::SystemStateManager;
 use crate::app::engine::Engine;
 use crate::app::objects::Body;
 use crate::app::video::Video;
-use crate::common::{TSharedRef, Vector2, BodyForm};
+use crate::common::{TSharedRef, Vector2, BodyForm, Materials, Colors};
 use crate::{rect, v2};
 
 /* -------------------- VARIABLES ------------------- */
@@ -137,6 +139,7 @@ impl App {
             }
 
             // Apply changes
+            self.video.canvas.set_draw_color(Colors::BG); // Background color
             self.video.canvas.present();
 
             // if self.shared.borrow().narrow_phase_pairs.len() > 0 {
