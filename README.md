@@ -10,13 +10,13 @@ My language of choice for this project is Rust, and graphics library used is SDL
 
 <div align="center">
   <img src="https://github.com/Tymur-Tykva/sdl2-rs-physics/raw/master/images/collision-detection-1.png" width="75%" align="center"></img>
-  <p>Collision detection test; no broad-phase nor narrow-phase flag.</p>
+  <p>Collision detection test; broad-phase collision detection flag, potential intersect found.</p>
   <br/>
 
   <img src="https://github.com/Tymur-Tykva/sdl2-rs-physics/raw/master/images/collision-detection-2.png" width="75%" align="center"></img>
-  <p>Collision detection test; broad-phase flag.</p>
+  <p>Collision detection test; narrow phase collision detection flag, single considered intersection, and single intersect found.</p>
   <br/>
 
   <img src="https://github.com/Tymur-Tykva/sdl2-rs-physics/raw/master/images/collision-detection-3.png" width="75%" align="center"></img>
-  <p>Collision detection test; narrow-phase flag.</p>
+  <p>Collision detection test; narrow phase collision detection flag, multiple considered intersections, and single intersect found.</p>
 </div>
