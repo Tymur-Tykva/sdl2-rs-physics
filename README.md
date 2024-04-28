@@ -6,9 +6,15 @@ The physics engine attempts to simulate basic mechanics, including: forces; forc
 My language of choice for this project is Rust, and graphics library used is SDL2, by means of the [sdl2-rs](https://docs.rs/sdl2/latest/sdl2/#) crate. 
 
 # Photos
-<h4 align="center">Note: Images are placeholders, until the rendering component is updated</h4>
-
 <div align="center">
+  
+  ### Simulation Demonstration
+  <div flex="row">
+      <img src="https://github.com/Tymur-Tykva/sdl2-rs-physics/raw/master/images/demo-1.png" width="45%" align="center"></img>
+      <img src="https://github.com/Tymur-Tykva/sdl2-rs-physics/raw/master/images/demo-2.png" width="45%" align="center"></img>
+  </div>
+
+  ### Collision Detection Visualization
   <img src="https://github.com/Tymur-Tykva/sdl2-rs-physics/raw/master/images/collision-detection-1.png" width="75%" align="center"></img>
   <p>Collision detection test; broad-phase collision detection flag, potential intersect found.</p>
   <br/>
